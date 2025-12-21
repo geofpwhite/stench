@@ -1,9 +1,14 @@
 defmodule Parser do
   @operators Operators.operators()
   def parse([token | tail]) do
-    # if tokenize's first token is an operator, add ans to the start of the tokens
     t = %TreeNode{value: token}
-    parse(t, tail)
+
+    if t.value != "(" do
+      parse(t, tail)
+    else
+      p = parse(%TreeNode{}, [token | tail])
+      p
+    end
   end
 
   def parse(_, [operator]) when operator in @operators do
@@ -25,13 +30,22 @@ defmodule Parser do
         cur_node
 
       "(" ->
-        inner_ary = inner(tail,[],1)
+        inner_ary = inner(tail, [], 1)
         inner = parse(inner_ary)
-        new = %{cur_node|right: inner}
-        parse(
-          new,
-          Enum.slice(tail, Enum.count(inner_ary)+1, Enum.count(tail) - Enum.count(inner_ary))
-        )
+
+        if cur_node.value == nil do
+          parse(
+            inner,
+            Enum.slice(tail, Enum.count(inner_ary) + 1, Enum.count(tail) - Enum.count(inner_ary))
+          )
+        else
+          new = %{cur_node | right: inner}
+
+          parse(
+            new,
+            Enum.slice(tail, Enum.count(inner_ary) + 1, Enum.count(tail) - Enum.count(inner_ary))
+          )
+        end
 
       token ->
         new = %TreeNode{value: token}
@@ -39,16 +53,19 @@ defmodule Parser do
     end
   end
 
-  def inner(["("|tail],inner,parens_count) do
-    inner(tail,inner++["("],parens_count+1)
+  def inner(["(" | tail], inner, parens_count) do
+    inner(tail, inner ++ ["("], parens_count + 1)
   end
-  def inner([")"|_],inner,1) do
+
+  def inner([")" | _], inner, 1) do
     inner
   end
-  def inner([")"|tail],inner,parens_count) do
-    inner(tail,inner++[")"],parens_count-1)
+
+  def inner([")" | tail], inner, parens_count) do
+    inner(tail, inner ++ [")"], parens_count - 1)
   end
-  def inner([head|tail],inner,parens_count) do
-    inner(tail,inner++[head],parens_count)
+
+  def inner([head | tail], inner, parens_count) do
+    inner(tail, inner ++ [head], parens_count)
   end
 end
