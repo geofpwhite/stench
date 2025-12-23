@@ -1,16 +1,16 @@
-# ElixirCalc
+# Stench
 
-**TODO: Add description**
+An interpreted language I'm writing in elixir. Mainly for learning. 
 
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `elixir_calc` to your list of dependencies in `mix.exs`:
+by adding `stench` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:elixir_calc, "~> 0.1.0"}
+    {:stench, "~> 0.1.0"}
   ]
 end
 ```

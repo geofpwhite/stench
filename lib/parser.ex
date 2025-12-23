@@ -6,8 +6,7 @@ defmodule Parser do
     if t.value != "(" do
       parse(t, tail)
     else
-      p = parse(%TreeNode{}, [token | tail])
-      p
+      parse(%TreeNode{}, [token | tail])
     end
   end
 
@@ -20,11 +19,21 @@ defmodule Parser do
     cur
   end
 
-  def parse(cur_node, [token | tail]) do
+  def parse(cur_node, [token | tail], root \\ false) do
     case token do
       token when token in @operators ->
-        new = %TreeNode{value: token, left: cur_node}
-        parse(new, tail)
+        # if we are assigning
+        if root do
+          new = %{cur_node | right: parse(tail, root: true)}
+          new
+        else
+          new = %TreeNode{value: token, left: cur_node}
+          parse(new, tail, root)
+        end
+
+      "=" ->
+        IO.puts("assigning")
+        parse(%TreeNode{value: "=", left: cur_node}, tail, root: true)
 
       ")" ->
         cur_node
@@ -32,18 +41,20 @@ defmodule Parser do
       "(" ->
         inner_ary = inner(tail, [], 1)
         inner = parse(inner_ary)
+        ilength = Enum.count(inner_ary)
+        tlength = Enum.count(tail)
 
         if cur_node.value == nil do
           parse(
             inner,
-            Enum.slice(tail, Enum.count(inner_ary) + 1, Enum.count(tail) - Enum.count(inner_ary))
+            Enum.slice(tail, ilength + 1, tlength - ilength)
           )
         else
           new = %{cur_node | right: inner}
 
           parse(
             new,
-            Enum.slice(tail, Enum.count(inner_ary) + 1, Enum.count(tail) - Enum.count(inner_ary))
+            Enum.slice(tail, ilength + 1, tlength - ilength)
           )
         end
 

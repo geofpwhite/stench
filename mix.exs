@@ -1,4 +1,4 @@
-defmodule ElixirCalc.MixProject do
+defmodule Stench.MixProject do
   use Mix.Project
 
   def project do
@@ -7,16 +7,16 @@ defmodule ElixirCalc.MixProject do
       version: "0.1.0",
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      escript: escript(),
+      # default_task: "Stench.CLI.main"
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
-  def application do
-    [
-      extra_applications: [:logger]
-    ]
+  defp escript do
+    [main_module: Stench.CLI, name: "calc"]
   end
+
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
