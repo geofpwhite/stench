@@ -8,7 +8,7 @@ defmodule Stench.MixProject do
       elixir: "~> 1.19",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      escript: escript(),
+      escript: escript()
       # default_task: "Stench.CLI.main"
     ]
   end
@@ -16,7 +16,6 @@ defmodule Stench.MixProject do
   defp escript do
     [main_module: Stench.CLI, name: "calc"]
   end
-
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do

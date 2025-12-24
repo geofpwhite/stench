@@ -6,12 +6,17 @@ defmodule Stench.CLI do
   @doc """
   """
   @operators Operators.operators()
+  @infix_operators Operators.infix_operators()
   def main(args \\ nil) do
     if :debug == args do
-      repl(%State{cur_return: 0}, true)
+      repl_cooked(%State{}, true)
     else
-      repl()
+      repl_cooked()
     end
+  end
+
+  def eval(line, true) do
+    eval(line, %State{}, true)
   end
 
   def eval(lines, state \\ %State{}, debug \\ nil)
@@ -29,6 +34,7 @@ defmodule Stench.CLI do
         state = Eval.eval(tree, state)
 
         if debug do
+          IO.puts(inspect(tree))
           IO.puts(inspect(state))
         end
 
@@ -36,37 +42,59 @@ defmodule Stench.CLI do
     end
   end
 
-  def eval([line | tail], state, debug) do
-    program = String.replace(to_string(line), "^^", "^")
-    tokens = Lexer.tokenize(program)
+  def repl(line, state \\ %State{}, debug \\ false) do
+    :shell.start_interactive({:noshell, :raw})
+    char = IO.getn("")
+    IO.write(char)
 
-    case Enum.at(tokens, 0) do
-      char when char in @operators ->
-        :error
+    case char do
+      char when char in ["\n", "\r"] ->
+        tokens = Lexer.tokenize(line)
+        if debug, do: IO.puts(inspect(tokens))
 
-      _ ->
-        tree = Parser.parse(tokens)
-        state = Eval.eval(tree, state)
+        case Enum.at(tokens, 0) do
+          char when char in @infix_operators ->
+            tree = Parser.parse([state.cur_return | tokens])
 
-        if debug do
-          IO.puts(inspect(state))
+            state2 = Eval.eval(tree, state)
+
+            if debug do
+              IO.puts(inspect(state2))
+              IO.puts(inspect(tree))
+            end
+
+            IO.puts(state2.cur_return.value())
+            repl(state2, debug)
+
+          _ ->
+            tree = Parser.parse(tokens)
+            state2 = Eval.eval(tree, state)
+
+            if debug do
+              IO.puts(inspect(state2))
+              IO.puts(inspect(tree))
+            end
+
+            IO.puts(state2.cur_return.value())
+            repl("", state2, debug)
         end
 
-        eval(tail, state, debug)
+      _ ->
+        repl(line <> char, state, debug)
     end
   end
 
-  def repl(state \\ %State{}, debug \\ false) do
+  def repl_cooked(state \\ %State{cur_return: %Var{}}, debug \\ false) do
     line = IO.gets(">>>>> ")
 
     if line == "" || line == "\n" || line == "\r" do
-      IO.puts("")
-      repl(state, debug)
+      repl_cooked(state, debug)
     else
       tokens = Lexer.tokenize(line)
+      if debug, do: IO.puts(inspect(tokens))
 
       case Enum.at(tokens, 0) do
-        char when char in @operators ->
+        char when char in @infix_operators ->
           tree = Parser.parse([state.cur_return | tokens])
 
           state2 = Eval.eval(tree, state)
@@ -76,19 +104,20 @@ defmodule Stench.CLI do
             IO.puts(inspect(tree))
           end
 
-          IO.puts(state2.cur_return)
-          repl(state2, debug)
+          IO.puts(state2.cur_return.value())
+          repl_cooked(state2, debug)
 
         _ ->
           tree = Parser.parse(tokens)
-          state2 = Eval.eval(tree,state)
-
           if debug do
-            IO.puts(inspect(state2))
             IO.puts(inspect(tree))
           end
-          IO.puts(state2.cur_return)
-          repl(state2, debug)
+          state2 = Eval.eval(tree, state)
+          if debug, do: IO.puts(inspect(state2))
+
+
+          IO.puts(state2.cur_return.value)
+          repl_cooked(state2, debug)
       end
     end
   end
