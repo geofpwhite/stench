@@ -15,6 +15,19 @@ defmodule Stench.CLI do
     end
   end
 
+  def exec(file_name) do
+    IO.puts(file_name)
+
+    case File.read(file_name) do
+      {:ok, content} ->
+        s = eval(to_string(content))
+        s
+
+      e ->
+        IO.puts(inspect(e))
+    end
+  end
+
   def eval(line, true) do
     eval(line, %State{}, true)
   end
@@ -104,21 +117,53 @@ defmodule Stench.CLI do
             IO.puts(inspect(tree))
           end
 
-          IO.puts(state2.cur_return.value())
+          IO.puts(inspect(state2.cur_return.value))
           repl_cooked(state2, debug)
 
         _ ->
           tree = Parser.parse(tokens)
+
           if debug do
             IO.puts(inspect(tree))
           end
+
           state2 = Eval.eval(tree, state)
           if debug, do: IO.puts(inspect(state2))
 
+          case state2.cur_return.type do
+            :bucket ->
+              IO.puts(print_bucket(state2.cur_return.value))
 
-          IO.puts(state2.cur_return.value)
+            _ ->
+              IO.puts(state2.cur_return.value)
+          end
+
           repl_cooked(state2, debug)
       end
     end
+  end
+
+  def print_bucket(vars) do
+    print_bucket(vars, "[")
+  end
+
+  def print_bucket([final], string) do
+    case final.type do
+      :bucket ->
+        inner = print_bucket(final.value)
+        string<>inner<>"]"
+      _ ->
+        string <> to_string(final.value) <> "]"
+    end
+  end
+
+  def print_bucket([head | tail], string) do
+  case head.type do
+
+    :bucket ->
+      print_bucket(tail,string<>print_bucket(head.value)<>",")
+    _->
+    print_bucket(tail, string <> to_string(head.value) <> ",")
+  end
   end
 end

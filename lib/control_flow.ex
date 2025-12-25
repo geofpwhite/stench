@@ -1,7 +1,7 @@
 defmodule Loop do
-  defstruct begin: %Var{}, condition: [%TreeNode{}], increment: nil, do: [%TreeNode{}]
+  defstruct begin: %Var{}, condition: [%TreeNode{}], increment: [%TreeNode{}], do: [%TreeNode{}]
 end
 
 defmodule Conditional do
-  defstruct condition: [%TreeNode{}], do: [%TreeNode{}]
+  defstruct condition: [%TreeNode{}], do: [%TreeNode{}], else: [%TreeNode{}]
 end

@@ -1,0 +1,5 @@
+a = 5
+b = 12
+pileup i = 0 ; i < 12 ; i = i + 1 {
+    print(a,b)
+}

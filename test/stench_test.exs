@@ -40,4 +40,9 @@ defmodule StenchTest do
     state = Stench.CLI.eval("1 is 1")
     assert state.cur_return.type == :bool and state.cur_return.value == true
   end
+
+  test "conditional statements" do
+    state = Stench.CLI.eval("a = 4; if a is 4 { a = 5 }")
+    assert state.cur_return.type == :int and state.vars["a"].value== 5
+  end
 end
