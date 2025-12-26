@@ -15,11 +15,14 @@ defmodule Eval do
   end
 
   def eval(
-    %TreeNode{
-      value: %Accessor{} = a
-    },state)do
-      eval(a,state)
-    end
+        %TreeNode{
+          value: %Accessor{} = a
+        },
+        state
+      ) do
+    eval(a, state)
+  end
+
   def eval(
         %Accessor{
           bucket_name: bucket,
@@ -27,13 +30,15 @@ defmodule Eval do
         },
         state
       ) do
-    index = eval(tree).cur_return.value
+    index = eval(tree, state).cur_return.value
     bucket_var = Map.get(state.vars, bucket)
 
     if bucket_var.type != :bucket do
       :error
     else
-      %{state|cur_return: Enum.at(bucket_var.value,index)}
+      x = %{state | cur_return: Enum.at(bucket_var.value, index, %Var{type: nil, value: nil})}
+
+      x
     end
   end
 
@@ -56,32 +61,35 @@ defmodule Eval do
         state
       ) do
     s = eval(begin, state)
-    new_state = iterate(condition, increment, exec, s)
 
+
+    new_state = iterate(condition, increment, exec, s)
     new_vars =
       Map.reject(new_state.vars, fn {key, _} ->
-        Map.get(state.vars, key, nil) == nil or begin.left.value == key
+        Map.get(state.vars, key, nil) == nil or
+          find(begin, key)
+
+        # Enum.find(begin, false, fn node -> node.left.value == key end)
       end)
 
     %{state | vars: new_vars}
   end
 
-  def eval(%Conditional{condition: statements, do: ary,else: to_do_if_false}, state) do
+  def eval(%Conditional{condition: statements, do: ary, else: to_do_if_false}, state) do
     s = eval(statements, state)
 
     if s.cur_return.value do
-      inner_state = eval(ary)
+      inner_state = eval(ary, s)
       reassignments = Map.intersect(state.vars, inner_state.vars)
       new_vars = Map.merge(state.vars, reassignments, fn _, _, b -> b end)
-      %{state | vars: new_vars,cur_return: inner_state.cur_return}
+      %{state | vars: new_vars, cur_return: inner_state.cur_return}
     else
-      inner_state = eval(to_do_if_false)
+      inner_state = eval(to_do_if_false, s)
       reassignments = Map.intersect(state.vars, inner_state.vars)
       new_vars = Map.merge(state.vars, reassignments, fn _, _, b -> b end)
-      %{state | vars: new_vars,cur_return: inner_state.cur_return}
+      %{state | vars: new_vars, cur_return: inner_state.cur_return}
     end
   end
-
 
   def eval(%TreeNode{left: left, right: right, value: value}, state) do
     # entering
@@ -93,17 +101,19 @@ defmodule Eval do
         %{state | cur_return: %Var{type: :bool, value: false}}
 
       "not" ->
-        e = not_op(eval(right).cur_return)
+        e = not_op(eval(right, state).cur_return())
         %{state | cur_return: e}
 
       v
       when v in @infix_operators ->
         ecl = eval(left, state).cur_return
+
         ecr = eval(right, state).cur_return
         %{state | cur_return: operator(ecl, ecr, value)}
 
       "=" ->
         ecr = eval(right, state)
+
         assign(left.value, ecr.cur_return, state)
 
       "\"" <> inner ->
@@ -115,7 +125,23 @@ defmodule Eval do
             }
         }
 
-      nil->
+      "print" ->
+        s = eval(right, state).cur_return
+        IO.puts(inspect(s.value))
+        state
+
+      "size" ->
+        s = eval(right, state)
+
+        s = s.cur_return
+
+        if s.type != :bucket do
+          :error
+        else
+          %{state | cur_return: %Var{type: :int, value: Enum.count(s.value)}}
+        end
+
+      nil ->
         state
 
       _ ->
@@ -154,6 +180,20 @@ defmodule Eval do
     %Var{
       type: :string,
       value: string1.value <> string2.value
+    }
+  end
+
+  def operator(string1, string2, "+") when string1.type == :int and string2.type == :string do
+    %Var{
+      type: :string,
+      value: to_string(string1.value) <> string2.value
+    }
+  end
+
+  def operator(string1, string2, "+") when string1.type == :string and string2.type == :int do
+    %Var{
+      type: :string,
+      value: string1.value <> to_string(string2.value)
     }
   end
 
@@ -218,23 +258,32 @@ defmodule Eval do
     end
   end
 
-  def assign(%Accessor{
-    bucket_name: bucket_name,
-    index: index
-  }, rhs, state) do
-    bucket = Map.get(state.vars,bucket_name)
-    e = eval(index,state)
+  def assign(
+        %Accessor{
+          bucket_name: bucket_name,
+          index: index
+        },
+        rhs,
+        state
+      ) do
+    bucket = Map.get(state.vars, bucket_name)
+    e = eval(index, state)
+
     if bucket.type != :bucket or Enum.count(bucket.value) <= e.cur_return.value do
       :error
     else
-        replaced = List.replace_at(bucket.value,e.cur_return.value,%Var{value: rhs.value, type: rhs.type})
-        %{state| vars: Map.put(state.vars,bucket_name,%{bucket|value: replaced}),cur_return: rhs}
+      replaced =
+        List.replace_at(bucket.value, e.cur_return.value, %Var{value: rhs.value, type: rhs.type})
 
-      end
+      %{
+        state
+        | vars: Map.put(state.vars, bucket_name, %{bucket | value: replaced}),
+          cur_return: rhs
+      }
     end
+  end
 
   def assign(lhs, rhs, state) do
-
     %{
       state
       | vars: Map.put(state.vars, lhs, %Var{value: rhs.value, type: rhs.type}),
@@ -315,11 +364,30 @@ defmodule Eval do
     s = eval(condition, state)
 
     if s.cur_return.type == :bool and s.cur_return.value do
-      s2 = eval(exec, s)
+      s2 = eval(exec, state)
+
       s3 = eval(increment, s2)
-      iterate(condition, increment, exec, s3)
+
+      #
+      iterate(condition, increment, exec, %{s3 | cur_return: s2.cur_return})
     else
       state
     end
+  end
+
+  def find([cur], key) do
+    cur.left.value == key
+  end
+
+  def find([cur | tail], key) do
+    if cur.left.value == key do
+      true
+    else
+      find(tail, key)
+    end
+  end
+
+  def find(begin, key) do
+    find([begin], key)
   end
 end

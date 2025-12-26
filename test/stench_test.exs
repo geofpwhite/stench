@@ -43,6 +43,25 @@ defmodule StenchTest do
 
   test "conditional statements" do
     state = Stench.CLI.eval("a = 4; if a is 4 { a = 5 }")
-    assert state.cur_return.type == :int and state.vars["a"].value== 5
+    assert state.cur_return.type == :int and state.vars["a"].value == 5
+  end
+
+  test "pileups" do
+    state = Stench.CLI.eval("a = 4; pileup i=0 ; i<10 ; i=i+1 { a = 5 };")
+    assert state.cur_return.type == :int and state.vars["a"].value == 5
+    state = Stench.CLI.eval("a = 4; pileup i := [1,2,3] { a = i }")
+    IO.puts(inspect(state))
+    assert state.cur_return.type == :int and state.vars["a"].value == 3
+  end
+
+  test "prints" do
+    state = Stench.CLI.eval("print 4")
+    assert state.cur_return.type == :nil
+  end
+
+  test "macros" do
+    assert Builtins.builtins() != nil
+    assert Keywords.keywords() != nil
+    assert Operators.operators() != nil
   end
 end

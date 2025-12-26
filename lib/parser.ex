@@ -39,6 +39,9 @@ defmodule Parser do
 
   def parse(cur_node, [token | tail], root, statements) do
     case cur_node.value do
+      ";" ->
+        parse(%TreeNode{}, [token | tail], root, statements)
+
       "if" ->
         {node, tail} = parse_if([token | tail])
         [x] = parse(tail)
@@ -46,18 +49,26 @@ defmodule Parser do
 
       "pileup" ->
         {node, tail} = parse_pileup([token | tail])
-        [x] = parse(tail)
-        statements ++ [node] ++ x
+
+        case parse(tail) do
+          [x] ->
+            statements ++ [node] ++ x
+
+          ary when is_list(ary) ->
+            statements ++ [node] ++ ary
+
+          other ->
+            statements ++ [node] ++ [other]
+        end
 
       _ ->
         case token do
           token when token in @infix_operators ->
             # if we are assigning
+            if root or cur_node.value in @prefix_operators do
+              n = %TreeNode{value: token, left: cur_node.right, right: parse(tail)}
 
-            if root do
-              n = %TreeNode{value: token, left: cur_node.right}
-
-              new = %{cur_node | right: parse(n, tail)}
+              new = %{cur_node | right: n}
               new
             else
               new = %TreeNode{value: token, left: cur_node}
@@ -66,33 +77,28 @@ defmodule Parser do
 
           token when token in @prefix_operators ->
             if root do
-              %{cur_node | right: parse(%TreeNode{value: token}, tail)}
+              %{cur_node | right: parse(%TreeNode{value: token}, tail, true)}
             else
               new = %TreeNode{value: token}
-              parse(new, tail, statements)
+              parse(new, tail, true, statements: statements)
             end
 
           "[" ->
-            IO.puts(cur_node.value)
-            IO.puts(inspect(root))
-            IO.puts(inspect(statements))
-
             if is_var_name?(cur_node.value) and not root do
               {accessor, tail} = parse_list_index(cur_node.value, tail)
-              IO.puts("accessor " <> inspect(accessor))
-              IO.puts("tail " <> inspect(tail))
+
               parse(accessor, tail, root, statements)
             else
-              if root and cur_node.right != nil and is_var_name?(cur_node.right.value) do
+              if cur_node.right != nil and is_var_name?(cur_node.right.value) and root do
                 {accessor, tail} = parse_list_index(cur_node.right.value, tail)
                 parse(%{cur_node | right: accessor}, tail, statements: statements)
               else
                 {bucket, tail} = parse_list(tail)
 
-                if root do
-                  parse(%{cur_node | right: bucket}, tail, statements: statements)
+                if cur_node == nil or cur_node.value == nil do
+                  parse(bucket, tail)
                 else
-                  parse(bucket, tail, statements: statements)
+                  parse(%{cur_node | right: bucket}, tail)
                 end
               end
             end
@@ -103,7 +109,7 @@ defmodule Parser do
           "=" ->
             parse(%TreeNode{value: "=", left: cur_node}, tail, true, statements)
 
-          ")" ->
+          char when char in [")", "]", "}"] ->
             cur_node
 
           "(" ->
@@ -150,9 +156,8 @@ defmodule Parser do
   end
 
   def parse_list_index(var_name, tail) do
-    IO.puts(inspect(tail))
     inner = inner_square_bracket(tail)
-    IO.puts(inner)
+
     inner_count = Enum.count(inner)
 
     {%TreeNode{
@@ -202,62 +207,106 @@ defmodule Parser do
   def parse_pileup(tokens) do
     until_left_bracket = Enum.take_while(tokens, fn token -> token != "{" end)
 
-    case Enum.reject(Enum.chunk_by(until_left_bracket, fn token -> token == ";" end), fn token ->
-           token == [";"]
-         end) do
-      [begin, check, increment] ->
-        [b] = parse(begin)
-        c = parse(check)
-        i = parse(increment)
-        pre_count = Enum.count(until_left_bracket)
-        token_count = Enum.count(tokens)
+    pre_count = Enum.count(until_left_bracket)
+    token_count = Enum.count(tokens)
 
-        inner_bracket =
-          Enum.take_while(
-            Enum.slice(tokens, pre_count + 1, token_count - pre_count - 1),
-            fn token -> token != "}" end
-          )
+    inner_bracket =
+      Enum.take_while(
+        Enum.slice(tokens, pre_count + 1, token_count - pre_count - 1),
+        fn token -> token != "}" end
+      )
 
-        exec = parse(inner_bracket)
-        inner_count = Enum.count(inner_bracket)
-        tail_index = inner_count + pre_count + 1
+    inner_count = Enum.count(inner_bracket)
+    tail_index = inner_count + pre_count + 1
 
-        {%Loop{condition: c, do: exec, begin: b, increment: i},
-         Enum.slice(tokens, tail_index + 1, token_count - tail_index - 1)}
+    if is_for_each?(until_left_bracket) do
+      {%{for_each(until_left_bracket) | do: parse(inner_bracket)},
+       Enum.slice(tokens, tail_index + 1, token_count - tail_index - 1)}
+    else
+      case Enum.reject(
+             Enum.chunk_by(until_left_bracket, fn token -> token == ";" end),
+             fn token ->
+               token == [";"]
+             end
+           ) do
+        [begin, check, increment] ->
+          [b] = parse(begin)
+          c = parse(check)
+          i = parse(increment)
+          exec = parse(inner_bracket)
+          if tail_index+2 < Enum.count(tokens) do
+          {%Loop{condition: c, do: exec, begin: b, increment: i},
+           Enum.slice(tokens, tail_index + 2, token_count - tail_index - 2)}
+          else
+          {%Loop{condition: c, do: exec, begin: b, increment: i},
+           []}
 
-      _ ->
-        if is_for_each?(until_left_bracket) do
-        else
+          end
+
+
+        _ ->
           :error
-        end
+      end
     end
   end
 
-  def for_each([":=" | tokens]) do
-    begin = %TreeNode{value: "=", left: %TreeNode{value: "index"}, right: %TreeNode{value: "0"}}
-
-    increment = %TreeNode{
-      value: "=",
-      left: %TreeNode{value: "index"},
-      right: %TreeNode{value: "+", right: %TreeNode{value: "1"}, left: %TreeNode{value: "index"}}
-    }
+  def for_each([name, ":=" | bucket]) do
+    begin = [
+      %TreeNode{value: "=", left: %TreeNode{value: "index"}, right: %TreeNode{value: "0"}},
+      %TreeNode{value: "=", left: %TreeNode{value: "ary"}, right: parse(bucket)},
+      %TreeNode{value: "=",left: %TreeNode{value: name}, right: %Accessor{bucket_name: "ary", index: %TreeNode{value: "index"}} }
+    ]
 
     condition = %TreeNode{
-      value: "not",
+      value: "<",
+      left: %TreeNode{
+        value: "index"
+      },
       right: %TreeNode{
-        value: "is",
-        left: %TreeNode{
-          value: "index"
-        },
+        value: "size",
         right: %TreeNode{
-          value: "size",
-          right: parse(tokens)
+          value: "ary"
         }
       }
     }
+
+    increment = [
+      %TreeNode{
+        value: "=",
+        left: %TreeNode{value: "index"},
+        right: %TreeNode{
+          value: "+",
+          right: %TreeNode{value: "1"},
+          left: %TreeNode{value: "index"}
+        }
+      },
+      # %Conditional{
+      #   condition: condition,
+      #   do: [%TreeNode{
+      %TreeNode{
+        value: "=",
+        left: %TreeNode{
+          value: name
+        },
+        right: %TreeNode{
+          value: %Accessor{
+            bucket_name: "ary",
+            index: %TreeNode{value: "index"}
+          }
+        }
+      }
+      # ]
+      # }
+    ]
+
+    %Loop{
+      begin: begin,
+      increment: increment,
+      condition: condition
+    }
   end
 
-  def is_for_each?([":=" | tail]) do
+  def is_for_each?([_, ":=" | _]) do
     true
   end
 
@@ -307,7 +356,7 @@ defmodule Parser do
 
   def parse_list(tokens) do
     until_right_bracket = inner_square_bracket(tokens, [], 1)
-    IO.puts(inspect(until_right_bracket) <> " urb")
+
     inner = remove_unnested_commas(until_right_bracket)
 
     right_bracket_index = Enum.count(until_right_bracket)

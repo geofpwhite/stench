@@ -1,5 +1,14 @@
-a = 5
-b = 12
-pileup i = 0 ; i < 12 ; i = i + 1 {
-    print(a,b)
-}
+a = 5;
+print ("a is " + a);
+x=4;
+print x;
+
+pileup i = 0 ; i < 12 ; i = i + 1 { 
+    a = i + a;
+};
+
+pileup i := [2,3,4,5]{
+    print ("i is " + i );
+};
+
+print ("a is now " + a);

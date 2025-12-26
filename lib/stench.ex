@@ -20,7 +20,22 @@ defmodule Stench.CLI do
 
     case File.read(file_name) do
       {:ok, content} ->
-        s = eval(to_string(content))
+        s = eval(to_string(content), %State{})
+        IO.puts(inspect(s))
+        s
+
+      e ->
+        IO.puts(inspect(e))
+    end
+  end
+
+  def exec(file_name, :debug) do
+    IO.puts(file_name)
+
+    case File.read(file_name) do
+      {:ok, content} ->
+        s = eval(to_string(content), %State{}, true)
+        IO.puts(inspect(s))
         s
 
       e ->
@@ -38,16 +53,24 @@ defmodule Stench.CLI do
     program = String.replace(to_string(line), "^^", "^")
     tokens = Lexer.tokenize(program)
 
+    if debug do
+      IO.puts(inspect(tokens))
+    end
+
     case Enum.at(tokens, 0) do
       char when char in @operators ->
         :error
 
       _ ->
         tree = Parser.parse(tokens)
-        state = Eval.eval(tree, state)
 
         if debug do
           IO.puts(inspect(tree))
+        end
+
+        state = Eval.eval(tree, state)
+
+        if debug do
           IO.puts(inspect(state))
         end
 
@@ -151,19 +174,20 @@ defmodule Stench.CLI do
     case final.type do
       :bucket ->
         inner = print_bucket(final.value)
-        string<>inner<>"]"
+        string <> inner <> "]"
+
       _ ->
         string <> to_string(final.value) <> "]"
     end
   end
 
   def print_bucket([head | tail], string) do
-  case head.type do
+    case head.type do
+      :bucket ->
+        print_bucket(tail, string <> print_bucket(head.value) <> ",")
 
-    :bucket ->
-      print_bucket(tail,string<>print_bucket(head.value)<>",")
-    _->
-    print_bucket(tail, string <> to_string(head.value) <> ",")
-  end
+      _ ->
+        print_bucket(tail, string <> to_string(head.value) <> ",")
+    end
   end
 end

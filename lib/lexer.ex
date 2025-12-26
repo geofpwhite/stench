@@ -1,9 +1,25 @@
 defmodule Lexer do
   @operators Operators.operators()
   @keywords Keywords.keywords()
-  @parens ["(", ")","{","}","[","]"]
+  @parens ["(", ")", "{", "}", "[", "]"]
   def tokenize("", tokens, "") do
     tokens
+  end
+
+  def tokenize(";", tokens, "") do
+    tokens
+  end
+
+  def tokenize(";", tokens, cur) do
+    tokens ++ [cur]
+  end
+
+  def tokenize(";\r\n", tokens, "") do
+    tokens
+  end
+
+  def tokenize(";\r\n", tokens, cur) do
+    tokens ++ [cur]
   end
 
   def tokenize("", tokens, cur) do
@@ -42,6 +58,10 @@ defmodule Lexer do
     end
   end
 
+  def tokenize(line, tokens, "\r\n") do
+    tokenize(line, tokens, "")
+  end
+
   def tokenize(line, tokens, cur) do
     {first, next} = String.split_at(line, 1)
 
@@ -57,6 +77,13 @@ defmodule Lexer do
               tokens ++ [cur, "\"" <> inner_string <> "\""],
               ""
             )
+        end
+
+      "=" ->
+        if cur == ":" do
+          tokenize(next, tokens ++ [":="], "")
+        else
+          tokenize(next, tokens ++ [cur, "="], "")
         end
 
       char

@@ -1,8 +1,8 @@
 defmodule State do
-  defstruct vars: %{}, cur_return: %{type: nil, value: nil}
+  defstruct vars: %{}, cur_return: %{type: nil, value: nil}, funcs: []
 
   @type t() :: %State{
-          vars: map(),
+          vars: map()
         }
 end
 
