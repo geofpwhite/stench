@@ -95,5 +95,7 @@ defmodule StenchTest.FileExecution do
     assert s.vars["a"].type == :int and s.vars["a"].value == 141
     s = Stench.CLI.exec("stench_examples/nested_normal_pileups.stench")
     assert s.vars["a"].type == :int and s.vars["a"].value == 91
+    s = Stench.CLI.exec("stench_examples/odors.stench")
+    assert s.vars["x"].type == :int and s.vars["x"].value == 5
   end
 end
