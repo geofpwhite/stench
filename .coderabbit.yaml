@@ -14,10 +14,6 @@ reviews:
     enabled: true
     drafts: true
   # Ensure all available security and linting tools are active (they are on by default, but explicitly listing can be clear)
-  tools:
-    gitleaks: true # Detect hardcoded secrets
-    checkov: true # Scan Infrastructure as Code for misconfigurations
-    yamllint: true # Check YAML files for syntax and adherence to best practices
   # Custom, strict instructions for the AI reviewer
   instructions: |
     You are a highly stringent and meticulous code reviewer.
