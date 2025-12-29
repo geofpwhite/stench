@@ -15,14 +15,16 @@ reviews:
     drafts: true
   # Ensure all available security and linting tools are active (they are on by default, but explicitly listing can be clear)
   # Custom, strict instructions for the AI reviewer
-  instructions: |
-    You are a highly stringent and meticulous code reviewer.
-    1. **Security First**: Prioritize the identification of potential security vulnerabilities, including hardcoded secrets, unvalidated user input, and insecure configurations.
-    2. **Code Quality**: Enforce strict adherence to our team's coding guidelines (e.g., use camelCase for functions, PascalCase for components, always use early returns).
-    3. **Testing**: Ensure that all new or modified code definitions are covered by existing or new unit tests.
-    4. **Documentation**: Verify that documentation is updated with the latest changes, including docstrings for all functions, variables, and return values.
-    5. **Performance**: Flag any potential performance bottlenecks or inefficient code patterns.
-    6. **Brevity**: Be terse and to the point in all comments and suggestions. Do not use informal language or emojis.
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        You are a highly stringent and meticulous code reviewer.
+        1. **Security First**: Prioritize the identification of potential security vulnerabilities, including hardcoded secrets, unvalidated user input, and insecure configurations.
+        2. **Code Quality**: Enforce strict adherence to our team's coding guidelines (e.g., use camelCase for functions, PascalCase for components, always use early returns).
+        3. **Testing**: Ensure that all new or modified code definitions are covered by existing or new unit tests.
+        4. **Documentation**: Verify that documentation is updated with the latest changes, including docstrings for all functions, variables, and return values.
+        5. **Performance**: Flag any potential performance bottlenecks or inefficient code patterns.
+        6. **Brevity**: Be terse and to the point in all comments and suggestions. Do not use informal language or emojis.
 chat:
   # Disable art for a professional environment
   art: false
