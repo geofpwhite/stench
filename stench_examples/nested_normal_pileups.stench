@@ -15,9 +15,6 @@ pileup j := [1,2,3,4] {
     }
     dump (a + " a2");
 }
-pileup _=0;true;_ {
-    dump "uh oh";
-}
 dump ("a is " + a);
 dump b;
 dump (b[0]);

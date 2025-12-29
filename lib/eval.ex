@@ -118,18 +118,21 @@ defmodule Eval do
       inner_state = eval(ary, s)
       reassignments = Map.intersect(state.vars, inner_state.vars)
       new_vars = Map.merge(state.vars, reassignments, fn _, _, b -> b end)
-      %{state | vars: new_vars, cur_return: inner_state.cur_return}
+      %{state | vars: new_vars, cur_return: inner_state.cur_return, break: inner_state.break}
     else
       inner_state = eval(to_do_if_false, s)
       reassignments = Map.intersect(state.vars, inner_state.vars)
       new_vars = Map.merge(state.vars, reassignments, fn _, _, b -> b end)
-      %{state | vars: new_vars, cur_return: inner_state.cur_return}
+      %{state | vars: new_vars, cur_return: inner_state.cur_return, break: inner_state.break}
     end
   end
 
   def eval(%TreeNode{left: left, right: right, value: value}, state) do
     # entering
     case value do
+      "break" ->
+        %{state | break: true}
+
       "true" ->
         %{state | cur_return: %Var{type: :bool, value: true}}
 
@@ -149,10 +152,7 @@ defmodule Eval do
         %{state | cur_return: operator(ecl, ecr, value)}
 
       "=" ->
-
-
         ecr = eval(right, state)
-
 
         assign(left.value, ecr.cur_return, state)
 
@@ -186,7 +186,6 @@ defmodule Eval do
 
       nil ->
         state
-
 
       ["\"" <> rest] ->
         %{
@@ -460,11 +459,12 @@ defmodule Eval do
 
     if s.cur_return.type == :bool and s.cur_return.value do
       s2 = eval(exec, state)
-
-      s3 = eval(increment, s2)
-
-      #
-      iterate(condition, increment, exec, %{s3 | cur_return: s2.cur_return})
+      if s2.break do
+        %{s2|break: false}
+      else
+        s3 = eval(increment, s2)
+        iterate(condition, increment, exec, %{s3 | cur_return: s2.cur_return})
+      end
     else
       state
     end

@@ -25,6 +25,13 @@ defmodule Stench.CLI do
     end
   end
 
+  def dump_for_repl(%Var{type: :bucket, value: ary}) do
+    Eval.dump_bucket(ary)
+  end
+  def dump_for_repl(%Var{ value: v}) do
+    inspect(v)
+  end
+
 
   def exec(file_name) do
     IO.puts(file_name)
@@ -32,7 +39,7 @@ defmodule Stench.CLI do
     case File.read(file_name) do
       {:ok, content} ->
         s = eval(to_string(content), %State{})
-        IO.puts(inspect(s))
+        IO.puts(dump_for_repl(s.cur_return))
         s
 
       e ->
@@ -46,7 +53,7 @@ defmodule Stench.CLI do
     case File.read(file_name) do
       {:ok, content} ->
         s = eval(to_string(content), %State{}, true)
-        IO.puts(inspect(s))
+        IO.puts(inspect(s.cur_return.value))
         s
 
       e ->
@@ -93,7 +100,6 @@ defmodule Stench.CLI do
     :shell.start_interactive({:noshell, :raw})
     char = IO.getn("")
     IO.write(char)
-    length = String.length(char)
     case char do
       char when char in ["\n", "\r"] ->
         tokens = Lexer.tokenize(line)
