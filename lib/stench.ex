@@ -7,13 +7,24 @@ defmodule Stench.CLI do
   """
   @operators Operators.operators()
   @infix_operators Operators.infix_operators()
-  def main(args \\ nil) do
-    if :debug == args do
-      repl_cooked(%State{}, true)
-    else
-      repl_cooked()
+  def main(raw \\ nil, debug \\ nil) do
+    case raw do
+      :raw ->
+        if debug == :debug do
+          repl("", %State{}, true)
+        else
+          repl("", %State{})
+        end
+
+      _ ->
+        if debug == :debug do
+          repl_cooked(%State{}, true)
+        else
+          repl_cooked()
+        end
     end
   end
+
 
   def exec(file_name) do
     IO.puts(file_name)
@@ -82,7 +93,7 @@ defmodule Stench.CLI do
     :shell.start_interactive({:noshell, :raw})
     char = IO.getn("")
     IO.write(char)
-
+    length = String.length(char)
     case char do
       char when char in ["\n", "\r"] ->
         tokens = Lexer.tokenize(line)
@@ -103,6 +114,7 @@ defmodule Stench.CLI do
             repl(state2, debug)
 
           _ ->
+            IO.puts(inspect(char))
             tree = Parser.parse(tokens)
             state2 = Eval.eval(tree, state)
 
@@ -144,6 +156,7 @@ defmodule Stench.CLI do
           repl_cooked(state2, debug)
 
         _ ->
+          IO.puts(inspect(tokens))
           tree = Parser.parse(tokens)
 
           if debug do
@@ -155,7 +168,7 @@ defmodule Stench.CLI do
 
           case state2.cur_return.type do
             :bucket ->
-              IO.puts(print_bucket(state2.cur_return.value))
+              IO.puts(Eval.dump_bucket(state2.cur_return.value))
 
             _ ->
               IO.puts(state2.cur_return.value)
@@ -163,31 +176,6 @@ defmodule Stench.CLI do
 
           repl_cooked(state2, debug)
       end
-    end
-  end
-
-  def print_bucket(vars) do
-    print_bucket(vars, "[")
-  end
-
-  def print_bucket([final], string) do
-    case final.type do
-      :bucket ->
-        inner = print_bucket(final.value)
-        string <> inner <> "]"
-
-      _ ->
-        string <> to_string(final.value) <> "]"
-    end
-  end
-
-  def print_bucket([head | tail], string) do
-    case head.type do
-      :bucket ->
-        print_bucket(tail, string <> print_bucket(head.value) <> ",")
-
-      _ ->
-        print_bucket(tail, string <> to_string(head.value) <> ",")
     end
   end
 end

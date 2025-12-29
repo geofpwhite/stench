@@ -43,6 +43,7 @@ defmodule Lexer do
             )
         end
 
+
       char
       when char in @operators or
              char in @parens or
@@ -86,6 +87,9 @@ defmodule Lexer do
           tokenize(next, tokens ++ [cur, "="], "")
         end
 
+      ":" ->
+        tokenize(next, tokens ++ [cur, ":"], "")
+
       char
       when char in @operators or
              char in @parens or
@@ -93,7 +97,7 @@ defmodule Lexer do
         tokenize(next, tokens ++ [cur, char], "")
 
       char
-      when char in [" ", "\n", "\r"] ->
+      when char in [" ", "\n", "\r", "\r\n"] ->
         tokenize(next, tokens ++ [cur], "")
 
       char ->

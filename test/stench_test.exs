@@ -44,24 +44,29 @@ defmodule StenchTest do
   test "conditional statements" do
     state = Stench.CLI.eval("a = 4; if a is 4 { a = 5 }")
     assert state.cur_return.type == :int and state.vars["a"].value == 5
+
+    state = Stench.CLI.eval("a = 4; if a is 5 { a = 5; } else { a = 6; }")
+
+    assert state.vars["a"].type == :int and state.vars["a"].value == 6
   end
 
   test "pileups" do
-    state = Stench.CLI.eval("a = 4; pileup i=0 ; i<10 ; i=i+1 { a = 5 };")
+    state = Stench.CLI.eval("a = 4; pileup i=0 ; i<10 ; i=i+1 { a = 5;}")
     assert state.cur_return.type == :int and state.vars["a"].value == 5
-    state = Stench.CLI.eval("a = 4; pileup i := [1,2,3] { a = i }")
-    IO.puts(inspect(state))
+    state = Stench.CLI.eval("a = 4; pileup i := [1,2,3] { a = i;}")
+
     assert state.cur_return.type == :int and state.vars["a"].value == 3
   end
 
-  test "prints" do
-    state = Stench.CLI.eval("print 4")
-    assert state.cur_return.type == :nil
+  test "dumps" do
+    state = Stench.CLI.eval("dump 4")
+    assert state.cur_return.type == nil
   end
 
-  test "macros" do
-    assert Builtins.builtins() != nil
-    assert Keywords.keywords() != nil
-    assert Operators.operators() != nil
+  test "interpret file" do
+    s = Stench.CLI.exec("stench_examples/example.stench")
+    assert s.vars["a"].type == :int and s.vars["a"].value == 71
+    s = Stench.CLI.exec("stench_examples/for_each.stench")
+    assert s.vars["a"].type == :int and s.vars["a"].value == 141
   end
 end

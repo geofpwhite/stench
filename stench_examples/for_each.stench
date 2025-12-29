@@ -1,0 +1,12 @@
+
+a = 1;
+dump ("a is " + a);
+pileup i := [2,3,4,5] {
+    pileup j := [1,2,3,4] {
+        dump ("j is " + j);
+        dump ("i is " + i );
+        a = a + ( i * j );
+    }
+}
+dump("a is now " + a);
+

@@ -33,13 +33,41 @@ defmodule Eval do
     index = eval(tree, state).cur_return.value
     bucket_var = Map.get(state.vars, bucket)
 
-    if bucket_var.type != :bucket do
-      :error
+    if bucket_var == nil do
+      %{state | cur_return: %Var{}}
     else
-      x = %{state | cur_return: Enum.at(bucket_var.value, index, %Var{type: nil, value: nil})}
+      if bucket_var.type != :bucket do
+        :error
+      else
+        x = %{state | cur_return: Enum.at(bucket_var.value, index, %Var{type: nil, value: nil})}
 
-      x
+        x
+      end
     end
+  end
+
+  def eval(
+        %Odor{
+          name: name,
+          params: _,
+          do: _,
+          return_type: _
+        } = o,
+        state
+      ) do
+    %{state | odors: Map.put(state.odors, name, o)}
+  end
+
+  def eval(
+        %Sniff{
+          odor: name,
+          param_values: params
+        },
+        state
+      ) do
+    s = eval(params, Map.get(state.odors, name), state)
+
+    s
   end
 
   def eval(
@@ -62,17 +90,25 @@ defmodule Eval do
       ) do
     s = eval(begin, state)
 
-
+    nested_loop_index_value = Map.get(state.vars, "_index_", nil)
+    nested_ary = Map.get(state.vars, "_ary_", nil)
     new_state = iterate(condition, increment, exec, s)
+
     new_vars =
       Map.reject(new_state.vars, fn {key, _} ->
         Map.get(state.vars, key, nil) == nil or
           find(begin, key)
-
-        # Enum.find(begin, false, fn node -> node.left.value == key end)
       end)
 
-    %{state | vars: new_vars}
+    if nested_loop_index_value != nil and nested_ary != nil do
+      %{
+        state
+        | vars:
+            Map.put(Map.put(new_vars, "_index_", nested_loop_index_value), "_ary_", nested_ary)
+      }
+    else
+      %{state | vars: new_vars}
+    end
   end
 
   def eval(%Conditional{condition: statements, do: ary, else: to_do_if_false}, state) do
@@ -101,7 +137,7 @@ defmodule Eval do
         %{state | cur_return: %Var{type: :bool, value: false}}
 
       "not" ->
-        e = not_op(eval(right, state).cur_return())
+        e = not_op(eval(right, state).cur_return)
         %{state | cur_return: e}
 
       v
@@ -109,10 +145,14 @@ defmodule Eval do
         ecl = eval(left, state).cur_return
 
         ecr = eval(right, state).cur_return
+
         %{state | cur_return: operator(ecl, ecr, value)}
 
       "=" ->
+
+
         ecr = eval(right, state)
+
 
         assign(left.value, ecr.cur_return, state)
 
@@ -125,9 +165,9 @@ defmodule Eval do
             }
         }
 
-      "print" ->
+      "dump" ->
         s = eval(right, state).cur_return
-        IO.puts(inspect(s.value))
+        if s.type == :bucket, do: IO.puts(dump_bucket(s.value)), else: IO.puts(inspect(s.value))
         state
 
       "size" ->
@@ -141,10 +181,22 @@ defmodule Eval do
           %{state | cur_return: %Var{type: :int, value: Enum.count(s.value)}}
         end
 
+      "typeof" ->
+        %{state | cur_return: %Var{type: :type, value: eval(right, state).cur_return.type}}
+
       nil ->
         state
 
+
+      ["\"" <> rest] ->
+        %{
+          state
+          | cur_return: %Var{type: :string, value: String.slice(rest, 0, String.length(rest) - 1)}
+        }
+
       _ ->
+        value = Parser.sanitize_inner(value)
+
         case Integer.parse(value) do
           {num, _} ->
             %{state | cur_return: %Var{type: :int, value: num}}
@@ -153,6 +205,28 @@ defmodule Eval do
             %{state | cur_return: Map.get(state.vars, value, %Var{})}
         end
     end
+  end
+
+  def eval(
+        [param | tail],
+        %Odor{params: [p2 | t2]} = odor,
+        state
+      ) do
+    s =
+      eval(
+        %TreeNode{value: "=", left: %TreeNode{value: p2.name}, right: %TreeNode{value: param}},
+        state
+      )
+
+    eval(tail, %{odor | params: t2}, s)
+  end
+
+  def eval(
+        [],
+        %Odor{do: exec},
+        state
+      ) do
+    eval(exec, state)
   end
 
   def eval(
@@ -180,6 +254,27 @@ defmodule Eval do
     %Var{
       type: :string,
       value: string1.value <> string2.value
+    }
+  end
+
+  def operator(bucket1, bucket2, "+") when bucket1.type == :bucket and bucket2.type == :bucket do
+    %Var{
+      type: :bucket,
+      value: bucket1.value ++ bucket2.value
+    }
+  end
+
+  def operator(bucket, other, "+") when bucket.type == :bucket do
+    %Var{
+      type: :bucket,
+      value: bucket.value ++ [other.value]
+    }
+  end
+
+  def operator(other, bucket, "+") when bucket.type == :bucket do
+    %Var{
+      type: :bucket,
+      value: [other.value] ++ bucket.value
     }
   end
 
@@ -389,5 +484,30 @@ defmodule Eval do
 
   def find(begin, key) do
     find([begin], key)
+  end
+
+  def dump_bucket(vars) do
+    dump_bucket(vars, "[")
+  end
+
+  def dump_bucket([final], string) do
+    case final.type do
+      :bucket ->
+        inner = dump_bucket(final.value)
+        string <> inner <> "]"
+
+      _ ->
+        string <> to_string(final.value) <> "]"
+    end
+  end
+
+  def dump_bucket([head | tail], string) do
+    case head.type do
+      :bucket ->
+        dump_bucket(tail, string <> dump_bucket(head.value) <> ",")
+
+      _ ->
+        dump_bucket(tail, string <> to_string(head.value) <> ",")
+    end
   end
 end

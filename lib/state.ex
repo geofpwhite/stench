@@ -1,5 +1,5 @@
 defmodule State do
-  defstruct vars: %{}, cur_return: %{type: nil, value: nil}, funcs: []
+  defstruct vars: %{}, cur_return: %{type: nil, value: nil}, odors: %{}
 
   @type t() :: %State{
           vars: map()

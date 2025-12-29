@@ -1,0 +1,23 @@
+
+
+a = 1;
+dump ("a is " + a);
+b = [ 1,2,3];
+pileup j := [1,2,3,4] {
+    pileup i = 2 ; i < 5 ; i = i + 1 {
+        a = a +  i * j ;
+        if i is j {
+            dump ("i is "+i+" and so is j");
+        }
+        dump a;
+        b[0] = a;
+        dump b[0];
+    }
+    dump (a + " a2");
+}
+pileup _=0;true;_ {
+    dump "uh oh";
+}
+dump ("a is " + a);
+dump b;
+dump (b[0]);

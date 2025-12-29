@@ -37,6 +37,15 @@ defmodule Parser do
     statements
   end
 
+  def parse(%TreeNode{value: nil, left: nil, right: t}, ary, root, statements) when t != nil do
+    parse(t, ary, root, statements)
+  end
+
+  def parse(%Bucket{garbage: _} = b, [token | tail], root, statements)
+      when token in ["+", "-"] do
+    parse(%TreeNode{value: token, left: b}, tail, root, statements)
+  end
+
   def parse(cur_node, [token | tail], root, statements) do
     case cur_node.value do
       ";" ->
@@ -44,8 +53,20 @@ defmodule Parser do
 
       "if" ->
         {node, tail} = parse_if([token | tail])
-        [x] = parse(tail)
-        statements ++ [node] ++ x
+
+        case parse(tail) do
+          [x] ->
+            statements ++ [node] ++ x
+
+          [x, []] ->
+            statements ++ [node] ++ x
+
+          %TreeNode{value: nil, left: nil, right: nil} ->
+            statements ++ [node]
+
+          x ->
+            statements ++ [node] ++ x
+        end
 
       "pileup" ->
         {node, tail} = parse_pileup([token | tail])
@@ -61,8 +82,50 @@ defmodule Parser do
             statements ++ [node] ++ [other]
         end
 
+      "sniff" ->
+        {node, tail} = parse_sniff([token | tail])
+
+        case parse(tail) do
+          [x] ->
+            statements ++ [node] ++ x
+
+          ary when is_list(ary) ->
+            statements ++ [node] ++ ary
+
+          other ->
+            statements ++ [node] ++ [other]
+        end
+
+      "odor" ->
+        {node, tail} = parse_odor([token | tail])
+
+        case parse(tail) do
+          [x] ->
+            statements ++ [node] ++ x
+
+          ary when is_list(ary) ->
+            statements ++ [node] ++ ary
+
+          other ->
+            statements ++ [node] ++ [other]
+        end
+
       _ ->
         case token do
+          "sniff" ->
+            {node, tail} = parse_sniff(tail)
+
+            case parse(tail) do
+              [x] ->
+                statements ++ [node] ++ x
+
+              ary when is_list(ary) ->
+                statements ++ [node] ++ ary
+
+              other ->
+                statements ++ [node] ++ [other]
+            end
+
           token when token in @infix_operators ->
             # if we are assigning
             if root or cur_node.value in @prefix_operators do
@@ -72,7 +135,7 @@ defmodule Parser do
               new
             else
               new = %TreeNode{value: token, left: cur_node}
-              parse(new, tail, statements)
+              parse(new, tail, root, statements)
             end
 
           token when token in @prefix_operators ->
@@ -82,6 +145,7 @@ defmodule Parser do
               new = %TreeNode{value: token}
               parse(new, tail, true, statements: statements)
             end
+
 
           "[" ->
             if is_var_name?(cur_node.value) and not root do
@@ -104,40 +168,111 @@ defmodule Parser do
             end
 
           ";" ->
-            statements ++ [cur_node] ++ parse(tail)
+            if cur_node.value == nil and cur_node.left == nil and cur_node.right == nil do
+              statements ++ parse(tail)
+              # statements ++ parse([token|tail])
+            else
+              statements ++ [cur_node] ++ parse(tail)
+            end
 
           "=" ->
-            parse(%TreeNode{value: "=", left: cur_node}, tail, true, statements)
+            assignment = Enum.take_while(tail, fn token -> token not in [";", "}"] end)
+
+            next =
+              Enum.slice(
+                tail,
+                min(Enum.count(tail), Enum.count(assignment)),
+                max(0, Enum.count(tail) - Enum.count(assignment))
+              )
+
+            #
+            pn = parse(next)
+
+            if Enum.empty?(pn) or pn == [[]] do
+              statements ++
+                [sanitize_inner(parse(%TreeNode{value: "=", left: cur_node}, assignment, true))]
+            else
+              statements ++
+                [sanitize_inner(parse(%TreeNode{value: "=", left: cur_node}, assignment, true))] ++
+                pn
+            end
+
+          # x = parse(%TreeNode{value: "=", left: cur_node}, assignment, true)
+          # y=parse(next)
+          #
+          #
+          #
+          # x=[parse(%TreeNode{value: "=", left: cur_node}, tail, true)]
+          # statements++x
 
           char when char in [")", "]", "}"] ->
             cur_node
 
           "(" ->
             inner_ary = inner(tail, [], 1)
-            [inner] = parse(inner_ary)
-            ilength = Enum.count(inner_ary)
-            tlength = Enum.count(tail)
 
-            if cur_node.value == nil do
-              x =
-                parse(
-                  inner,
-                  Enum.slice(tail, ilength + 1, tlength - ilength),
-                  root
-                )
+            case parse(inner_ary) do
+              [inner] ->
+                ilength = Enum.count(inner_ary)
+                tlength = Enum.count(tail)
 
-              x
-            else
-              new = %{cur_node | right: inner}
+                if cur_node.value == nil and cur_node.right == nil do
+                  x =
+                    sanitize_inner(
+                      parse(
+                        inner,
+                        Enum.slice(tail, ilength + 0, tlength - ilength - 0),
+                        root
+                      )
+                    )
 
-              x =
-                parse(
-                  new,
-                  Enum.slice(tail, ilength + 1, tlength - ilength),
-                  root
-                )
+                  x
+                else
+                  if cur_node.value == nil do
+                    parse(
+                      cur_node.right,
+                      Enum.slice(tail, ilength + 1, tlength - ilength - 1),
+                      root
+                    )
+                  else
+                    new = %{cur_node | right: inner}
 
-              x
+                    x =
+                      parse(
+                        new,
+                        Enum.slice(tail, ilength + 1, tlength - ilength - 1),
+                        root
+                      )
+
+                    x
+                  end
+                end
+
+              inner ->
+                ilength = Enum.count(inner_ary)
+                tlength = Enum.count(tail)
+
+                if cur_node.value == nil do
+                  x =
+                    parse(
+                      inner,
+                      Enum.slice(tail, ilength + 1, tlength - ilength - 1),
+                      root
+                    )
+
+                  x
+                else
+                  new = %{cur_node | right: inner}
+
+                  x =
+                    parse(
+                      new,
+                      Enum.slice(tail, ilength + 1, tlength - ilength - 1),
+                      root
+                    )
+
+                  x
+                end
             end
 
           token ->
@@ -145,6 +280,29 @@ defmodule Parser do
             parse(%{cur_node | right: new}, tail, root, statements)
         end
     end
+  end
+
+  def parse_sniff([odor, "(" | tail]) do
+    within = inner(tail)
+    new_tail = Enum.slice(tail, Enum.count(within) + 1, Enum.count(tail) - Enum.count(within) - 1)
+
+    {%Sniff{
+       odor: odor,
+       param_values:
+         Enum.reject(Enum.chunk_by(inner(tail), fn t -> t == "," end), fn t -> t == [","] end)
+     }, new_tail}
+  end
+
+  def sanitize_inner([inner, []]) do
+    inner
+  end
+
+  def sanitize_inner([inner]) do
+    inner
+  end
+
+  def sanitize_inner(inner) do
+    inner
   end
 
   def is_var_name?(value) do
@@ -168,30 +326,29 @@ defmodule Parser do
      }, Enum.slice(tail, inner_count + 1, Enum.count(tail) - inner_count - 1)}
   end
 
+  def remove_empty(ary) do
+    Enum.reject(ary, fn element -> element == [] end)
+  end
+
   def parse_if(tokens) do
     until_left_bracket = Enum.take_while(tokens, fn token -> token != "{" end)
 
     check = parse(until_left_bracket)
     condition_count = Enum.count(until_left_bracket)
     token_count = Enum.count(tokens)
+    x = Enum.slice(tokens, condition_count + 1, token_count - condition_count - 1)
 
     inner_bracket =
-      Enum.take_while(
-        Enum.slice(tokens, condition_count + 1, token_count - condition_count - 1),
-        fn token -> token != "}" end
-      )
+      inner_curly_bracket(x)
 
     inner_count = Enum.count(inner_bracket)
     tail_index = inner_count + condition_count + 1
-    exec = parse(inner_bracket)
+    exec = remove_empty(parse(inner_bracket))
+
     new_tail = Enum.slice(tokens, tail_index + 1, token_count - tail_index - 1)
 
     if Enum.count(new_tail) != 0 and Enum.at(new_tail, 0) == "else" do
-      inner_bracket =
-        Enum.take_while(
-          Enum.slice(new_tail, 2, Enum.count(new_tail) - 2),
-          fn token -> token != "}" end
-        )
+      inner_bracket = inner_curly_bracket(Enum.slice(new_tail, 2, Enum.count(new_tail) - 2))
 
       {%Conditional{condition: check, do: exec, else: parse(inner_bracket)},
        Enum.slice(
@@ -204,17 +361,72 @@ defmodule Parser do
     end
   end
 
+  def parse_odor([func_name, "(" | tail]) do
+    param_tokens = inner(tail)
+
+    new_tail =
+      Enum.slice(
+        tail,
+        Enum.count(param_tokens) + 1,
+        Enum.count(tail) - Enum.count(param_tokens) - 1
+      )
+
+    {return_type, todo_tokens} = get_return_value(new_tail)
+
+    params_by_types =
+      Enum.reject(Enum.chunk_by(param_tokens, fn token -> token == "," end), fn ary ->
+        ary == [","]
+      end)
+
+    params =
+      Enum.map(params_by_types, fn [name, ":", type] ->
+        %Param{
+          name: name,
+          type: type
+        }
+      end)
+
+    exec = parse(todo_tokens)
+
+    {%Odor{
+       name: func_name,
+       params: params,
+       do: exec,
+       return_type: return_type
+     },
+     Enum.slice(
+       new_tail,
+       Enum.count(todo_tokens) + 3,
+       Enum.count(new_tail) - Enum.count(todo_tokens) - 3
+     )}
+  end
+
+  def get_return_value(tail) do
+    case tail do
+      ["{" | tail] ->
+        todo = inner_curly_bracket(tail)
+        {nil, todo}
+
+      [return_type, "{" | tail] ->
+        todo = inner_curly_bracket(tail)
+        {return_type, todo}
+
+      _ ->
+        :error
+    end
+  end
+
   def parse_pileup(tokens) do
     until_left_bracket = Enum.take_while(tokens, fn token -> token != "{" end)
 
     pre_count = Enum.count(until_left_bracket)
     token_count = Enum.count(tokens)
 
+    inner_check =
+      Enum.slice(tokens, min(token_count, pre_count + 1), max(0, token_count - pre_count - 1))
+
     inner_bracket =
-      Enum.take_while(
-        Enum.slice(tokens, pre_count + 1, token_count - pre_count - 1),
-        fn token -> token != "}" end
-      )
+      inner_curly_bracket(inner_check)
 
     inner_count = Enum.count(inner_bracket)
     tail_index = inner_count + pre_count + 1
@@ -234,15 +446,13 @@ defmodule Parser do
           c = parse(check)
           i = parse(increment)
           exec = parse(inner_bracket)
-          if tail_index+2 < Enum.count(tokens) do
-          {%Loop{condition: c, do: exec, begin: b, increment: i},
-           Enum.slice(tokens, tail_index + 2, token_count - tail_index - 2)}
+
+          if tail_index + 1 < Enum.count(tokens) do
+            {%Loop{condition: c, do: exec, begin: b, increment: i},
+             Enum.slice(tokens, tail_index + 1, token_count - tail_index - 1)}
           else
-          {%Loop{condition: c, do: exec, begin: b, increment: i},
-           []}
-
+            {%Loop{condition: c, do: exec, begin: b, increment: i}, []}
           end
-
 
         _ ->
           :error
@@ -252,20 +462,24 @@ defmodule Parser do
 
   def for_each([name, ":=" | bucket]) do
     begin = [
-      %TreeNode{value: "=", left: %TreeNode{value: "index"}, right: %TreeNode{value: "0"}},
-      %TreeNode{value: "=", left: %TreeNode{value: "ary"}, right: parse(bucket)},
-      %TreeNode{value: "=",left: %TreeNode{value: name}, right: %Accessor{bucket_name: "ary", index: %TreeNode{value: "index"}} }
+      %TreeNode{value: "=", left: %TreeNode{value: "_index_"}, right: %TreeNode{value: "0"}},
+      %TreeNode{value: "=", left: %TreeNode{value: "_ary_"}, right: parse(bucket)},
+      %TreeNode{
+        value: "=",
+        left: %TreeNode{value: name},
+        right: %Accessor{bucket_name: "_ary_", index: %TreeNode{value: "_index_"}}
+      }
     ]
 
     condition = %TreeNode{
       value: "<",
       left: %TreeNode{
-        value: "index"
+        value: "_index_"
       },
       right: %TreeNode{
         value: "size",
         right: %TreeNode{
-          value: "ary"
+          value: "_ary_"
         }
       }
     }
@@ -273,16 +487,13 @@ defmodule Parser do
     increment = [
       %TreeNode{
         value: "=",
-        left: %TreeNode{value: "index"},
+        left: %TreeNode{value: "_index_"},
         right: %TreeNode{
           value: "+",
           right: %TreeNode{value: "1"},
-          left: %TreeNode{value: "index"}
+          left: %TreeNode{value: "_index_"}
         }
       },
-      # %Conditional{
-      #   condition: condition,
-      #   do: [%TreeNode{
       %TreeNode{
         value: "=",
         left: %TreeNode{
@@ -290,13 +501,11 @@ defmodule Parser do
         },
         right: %TreeNode{
           value: %Accessor{
-            bucket_name: "ary",
-            index: %TreeNode{value: "index"}
+            bucket_name: "_ary_",
+            index: %TreeNode{value: "_index_"}
           }
         }
       }
-      # ]
-      # }
     ]
 
     %Loop{
@@ -312,6 +521,10 @@ defmodule Parser do
 
   def is_for_each?(_) do
     false
+  end
+
+  def inner(ary) do
+    inner(ary, [], 1)
   end
 
   def inner(["(" | tail], inner, parens_count) do
@@ -352,6 +565,30 @@ defmodule Parser do
 
   def inner_square_bracket([head | tail], inner, parens_count) do
     inner_square_bracket(tail, inner ++ [head], parens_count)
+  end
+
+  def inner_curly_bracket(tokens) do
+    inner_curly_bracket(tokens, [], 1)
+  end
+
+  def inner_curly_bracket(["{" | tail], inner, parens_count) do
+    inner_curly_bracket(tail, inner ++ ["{"], parens_count + 1)
+  end
+
+  def inner_curly_bracket(["}" | _], inner, 1) do
+    inner
+  end
+
+  def inner_curly_bracket(["}" | tail], inner, parens_count) do
+    inner_curly_bracket(tail, inner ++ ["}"], parens_count - 1)
+  end
+
+  def inner_curly_bracket([], _, _) do
+    :error
+  end
+
+  def inner_curly_bracket([head | tail], inner, parens_count) do
+    inner_curly_bracket(tail, inner ++ [head], parens_count)
   end
 
   def parse_list(tokens) do
