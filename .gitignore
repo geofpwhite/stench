@@ -25,3 +25,4 @@ elixir_calc-*.tar
 
 coverage
 .vscode/launch.json
+stench

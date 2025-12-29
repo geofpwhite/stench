@@ -315,6 +315,10 @@ defmodule Eval do
     lt_op(num, num2)
   end
 
+  def operator(num, num2, "%") do
+    mod_op(num, num2)
+  end
+
   def operator(num, num2, op) when num.type == :int and num2.type == :int do
     case op do
       "+" ->
@@ -454,13 +458,25 @@ defmodule Eval do
     end
   end
 
+  def mod_op(left, right) do
+    if left.type == right.type and left.type == :int do
+      %Var{
+        type: :bool,
+        value: Integer.mod(left.value, right.value)
+      }
+    else
+      :error
+    end
+  end
+
   def iterate(condition, increment, exec, state) do
     s = eval(condition, state)
 
     if s.cur_return.type == :bool and s.cur_return.value do
       s2 = eval(exec, state)
+
       if s2.break do
-        %{s2|break: false}
+        %{s2 | break: false}
       else
         s3 = eval(increment, s2)
         iterate(condition, increment, exec, %{s3 | cur_return: s2.cur_return})

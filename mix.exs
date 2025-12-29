@@ -14,7 +14,7 @@ defmodule Stench.MixProject do
   end
 
   defp escript do
-    [main_module: Stench.CLI, name: "calc"]
+    [main_module: Stench.CLI, name: "stench"]
   end
 
   # Run "mix help deps" to learn about dependencies.

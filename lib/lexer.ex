@@ -43,7 +43,6 @@ defmodule Lexer do
             )
         end
 
-
       char
       when char in @operators or
              char in @parens or
