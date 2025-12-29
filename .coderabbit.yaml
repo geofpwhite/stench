@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+reviews:
+  # Set the review profile to 'assertive' for comprehensive feedback including style and best practice suggestions
+  profile: assertive
+  # Ensure a high-level summary is always provided
+  high_level_summary: true
+  # Always show the review status
+  review_status: true
+  # Disable whimsical poems for a professional tone
+  poem: false
+  # Enable automatic reviews for all pull requests, including drafts
+  auto_review:
+    enabled: true
+    drafts: true
+  # Ensure all available security and linting tools are active (they are on by default, but explicitly listing can be clear)
+  # Custom, strict instructions for the AI reviewer
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        You are a highly stringent and meticulous code reviewer.
+        1. **Security First**: Prioritize the identification of potential security vulnerabilities, including hardcoded secrets, unvalidated user input, and insecure configurations.
+        2. **Code Quality**: Enforce strict adherence to Elixir conventions (e.g., use snake_case for functions and variables, PascalCase for module names, pattern matching over conditionals where appropriate).
+        3. **Testing**: Ensure that all new or modified code definitions are covered by existing or new unit tests.
+        4. **Documentation**: Verify that documentation is updated with the latest changes, including docstrings for all functions, variables, and return values.
+        5. **Performance**: Flag any potential performance bottlenecks or inefficient code patterns.
+        6. **Brevity**: Be terse and to the point in all comments and suggestions. Do not use informal language or emojis.
+chat:
+  # Disable art for a professional environment
+  art: false
+# Use path-based instructions for specific parts of the codebase if needed (e.g., enforce specific rules for the `/src/api` directory)
+# path_instructions:
+#   "src/api/**": "Ensure all API endpoints have robust input validation and error handling."
