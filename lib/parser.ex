@@ -395,8 +395,8 @@ defmodule Parser do
      },
      Enum.slice(
        new_tail,
-       Enum.count(todo_tokens) + 3,
-       Enum.count(new_tail) - Enum.count(todo_tokens) - 3
+       min(Enum.count(todo_tokens) + 3, Enum.count(new_tail)-1),
+       max(0,Enum.count(new_tail) - Enum.count(todo_tokens) - 3)
      )}
   end
 
