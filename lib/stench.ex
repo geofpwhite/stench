@@ -25,7 +25,7 @@ defmodule Stench.CLI do
     end
   end
 
-  def main(args \\ []) do
+  def main(_args \\ []) do
     main_repl()
   end
 
