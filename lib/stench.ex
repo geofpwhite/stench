@@ -7,7 +7,7 @@ defmodule Stench.CLI do
   """
   @operators Operators.operators()
   @infix_operators Operators.infix_operators()
-  def main(raw \\ nil, debug \\ nil) do
+  def main_repl(raw \\ nil, debug \\ nil) do
     case raw do
       :raw ->
         if debug == :debug do
@@ -25,13 +25,17 @@ defmodule Stench.CLI do
     end
   end
 
+  def main(_args \\ []) do
+    main_repl()
+  end
+
   def dump_for_repl(%Var{type: :bucket, value: ary}) do
     Eval.dump_bucket(ary)
   end
-  def dump_for_repl(%Var{ value: v}) do
+
+  def dump_for_repl(%Var{value: v}) do
     inspect(v)
   end
-
 
   def exec(file_name) do
     IO.puts(file_name)
@@ -100,6 +104,7 @@ defmodule Stench.CLI do
     :shell.start_interactive({:noshell, :raw})
     char = IO.getn("")
     IO.write(char)
+
     case char do
       char when char in ["\n", "\r"] ->
         tokens = Lexer.tokenize(line)

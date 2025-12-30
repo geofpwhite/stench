@@ -146,7 +146,6 @@ defmodule Parser do
               parse(new, tail, true, statements: statements)
             end
 
-
           "[" ->
             if is_var_name?(cur_node.value) and not root do
               {accessor, tail} = parse_list_index(cur_node.value, tail)
