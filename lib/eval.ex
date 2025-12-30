@@ -461,7 +461,7 @@ defmodule Eval do
   def mod_op(left, right) do
     if left.type == right.type and left.type == :int do
       %Var{
-        type: :bool,
+        type: :int,
         value: Integer.mod(left.value, right.value)
       }
     else
