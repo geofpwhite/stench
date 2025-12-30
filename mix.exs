@@ -12,7 +12,7 @@ defmodule Stench.MixProject do
       # default_task: "Stench.CLI.main"
       test_coverage: [
         ignore_modules: [
-          Operators,Keywords,Stench.CLI
+          Operators, Keywords, Stench.CLI
         ]
       ]
     ]
