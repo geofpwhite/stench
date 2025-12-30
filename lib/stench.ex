@@ -35,11 +35,12 @@ defmodule Stench.CLI do
     Eval.dump_bucket(ary)
   end
 
-  def dump_for_repl(%Var{value: v}) do
-    inspect(v)
-  end
   def dump_for_repl(%Var{type: nil, value: nil}) do
     "nil"
+  end
+
+  def dump_for_repl(%Var{value: v}) do
+    inspect(v)
   end
 
   def exec(file_name) do
