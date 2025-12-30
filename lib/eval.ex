@@ -178,11 +178,14 @@ defmodule Eval do
         if s.type != :bucket do
           :error
         else
-          %{state | cur_return: %Var{type: :int, value: Enum.count(s.value)}}
+          %{state | cur_return: %Var{type: :num, value: Enum.count(s.value)}}
         end
 
       "typeof" ->
         %{state | cur_return: %Var{type: :type, value: eval(right, state).cur_return.type}}
+
+      "wipe" ->
+        %{state | vars: Map.delete(state.vars, right.value)}
 
       nil ->
         state
@@ -198,7 +201,7 @@ defmodule Eval do
 
         case Integer.parse(value) do
           {num, _} ->
-            %{state | cur_return: %Var{type: :int, value: num}}
+            %{state | cur_return: %Var{type: :num, value: num}}
 
           :error ->
             %{state | cur_return: Map.get(state.vars, value, %Var{})}
@@ -277,14 +280,14 @@ defmodule Eval do
     }
   end
 
-  def operator(string1, string2, "+") when string1.type == :int and string2.type == :string do
+  def operator(string1, string2, "+") when string1.type == :num and string2.type == :string do
     %Var{
       type: :string,
       value: to_string(string1.value) <> string2.value
     }
   end
 
-  def operator(string1, string2, "+") when string1.type == :string and string2.type == :int do
+  def operator(string1, string2, "+") when string1.type == :string and string2.type == :num do
     %Var{
       type: :string,
       value: string1.value <> to_string(string2.value)
@@ -319,36 +322,36 @@ defmodule Eval do
     mod_op(num, num2)
   end
 
-  def operator(num, num2, op) when num.type == :int and num2.type == :int do
+  def operator(num, num2, op) when num.type == :num and num2.type == :num do
     case op do
       "+" ->
         %Var{
           value: num.value + num2.value,
-          type: :int
+          type: :num
         }
 
       "-" ->
         %Var{
           value: num.value - num2.value,
-          type: :int
+          type: :num
         }
 
       "*" ->
         %Var{
           value: num.value * num2.value,
-          type: :int
+          type: :num
         }
 
       "/" ->
         %Var{
           value: num.value / num2.value,
-          type: :int
+          type: :num
         }
 
       "^" ->
         %Var{
           value: :math.pow(num.value, num2.value),
-          type: :int
+          type: :num
         }
 
       _ ->
@@ -437,7 +440,7 @@ defmodule Eval do
   end
 
   def lt_op(left, right) do
-    if left.type == right.type and left.type == :int do
+    if left.type == right.type and left.type == :num do
       %Var{
         type: :bool,
         value: left.value < right.value
@@ -448,7 +451,7 @@ defmodule Eval do
   end
 
   def gt_op(left, right) do
-    if left.type == right.type and left.type == :int do
+    if left.type == right.type and left.type == :num do
       %Var{
         type: :bool,
         value: left.value > right.value
@@ -459,9 +462,9 @@ defmodule Eval do
   end
 
   def mod_op(left, right) do
-    if left.type == right.type and left.type == :int do
+    if left.type == right.type and left.type == :num do
       %Var{
-        type: :int,
+        type: :num,
         value: Integer.mod(left.value, right.value)
       }
     else

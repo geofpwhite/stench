@@ -10,6 +10,8 @@ defmodule Stench.CLI do
   def main_repl(raw \\ nil, debug \\ nil) do
     case raw do
       :raw ->
+        :shell.start_interactive({:noshell, :raw})
+
         if debug == :debug do
           repl("", %State{}, true)
         else
@@ -35,6 +37,9 @@ defmodule Stench.CLI do
 
   def dump_for_repl(%Var{value: v}) do
     inspect(v)
+  end
+  def dump_for_repl(%Var{type: nil, value: nil}) do
+    "nil"
   end
 
   def exec(file_name) do
@@ -100,14 +105,45 @@ defmodule Stench.CLI do
     end
   end
 
-  def repl(line, state \\ %State{}, debug \\ false) do
-    :shell.start_interactive({:noshell, :raw})
-    char = IO.getn("")
-    IO.write(char)
+  def repl(line, state \\ %State{}, debug \\ false, index \\ 0) do
+    # char = IO.getn("")
+    if line == "" do
+      IO.puts(IO.ANSI.cursor_down(100))
+      IO.puts(IO.ANSI.cursor_left(100))
 
+      IO.write(
+        IO.ANSI.red() <>
+          "☁" <> IO.ANSI.green() <> "☁" <> IO.ANSI.blue() <> "☁ " <> IO.ANSI.reset()
+      )
+    end
+
+    char = IO.binread(6)
     case char do
-      char when char in ["\n", "\r"] ->
+      <<127>> ->
+        IO.write(IO.ANSI.cursor_left())
+        IO.write(" ")
+        IO.write(IO.ANSI.cursor_left())
+        repl(String.slice(line, 0, max(0, String.length(line) - 1)), state, debug)
+
+      <<27, 91, 65>> ->
+        repl("", state, debug)
+
+      <<27, 91, 66>> ->
+        repl("", state, debug)
+
+      <<27, 91, 67>> ->
+        IO.write(IO.ANSI.cursor_right())
+        repl(line, state, debug,min(index+1,0))
+
+      <<27, 91, 68>> ->
+        IO.write(IO.ANSI.cursor_left())
+        repl(line, state, debug,max(index-1,-String.length(line)))
+
+      char when char in ["\n", "\r", "\r\n"] ->
+        IO.puts("")
+        IO.write(IO.ANSI.cursor_left(100))
         tokens = Lexer.tokenize(line)
+
         if debug, do: IO.puts(inspect(tokens))
 
         case Enum.at(tokens, 0) do
@@ -121,11 +157,11 @@ defmodule Stench.CLI do
               IO.puts(inspect(tree))
             end
 
-            IO.puts(state2.cur_return.value())
-            repl(state2, debug)
+            IO.puts("\n" <> IO.ANSI.cursor_left(100) <> dump_for_repl(state2.cur_return))
+            IO.write(IO.ANSI.cursor_left(String.length(line) + 15))
+            repl("", state2, debug,index)
 
           _ ->
-            IO.puts(inspect(char))
             tree = Parser.parse(tokens)
             state2 = Eval.eval(tree, state)
 
@@ -134,17 +170,32 @@ defmodule Stench.CLI do
               IO.puts(inspect(tree))
             end
 
-            IO.puts(state2.cur_return.value())
-            repl("", state2, debug)
+            IO.puts("\n" <> IO.ANSI.cursor_left(100) <> dump_for_repl(state2.cur_return))
+            repl("", state2, debug,index)
         end
 
       _ ->
-        repl(line <> char, state, debug)
+        case index do
+          0 ->
+            IO.write(char)
+            repl(line <> char, state, debug)
+          _ ->
+            {first,second} = String.split_at(line,String.length(line)+index)
+            IO.write(char<>second)
+            IO.write(IO.ANSI.cursor_left(String.length(second)))
+
+            repl(first<>char<>second,state,debug,index)
+
+        end
     end
   end
 
   def repl_cooked(state \\ %State{cur_return: %Var{}}, debug \\ false) do
-    line = IO.gets(">>>>> ")
+    line =
+      IO.gets(
+        IO.ANSI.red() <>
+          ">" <> IO.ANSI.green() <> ">" <> IO.ANSI.blue() <> "> " <> IO.ANSI.reset()
+      )
 
     if line == "" || line == "\n" || line == "\r" do
       repl_cooked(state, debug)
@@ -167,7 +218,6 @@ defmodule Stench.CLI do
           repl_cooked(state2, debug)
 
         _ ->
-          IO.puts(inspect(tokens))
           tree = Parser.parse(tokens)
 
           if debug do

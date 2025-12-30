@@ -19,8 +19,3 @@ end
 defmodule Sniff do
   defstruct odor: "", param_values: []
 end
-
-defmodule Builtins do
-  @builtins ["dump"]
-  def builtins, do: @builtins
-end
