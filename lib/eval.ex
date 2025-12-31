@@ -332,7 +332,7 @@ defmodule Stench.Eval do
   end
 
   def operator(non_str, str, "+") when str.type == :string and non_str.type != :string do
-    %Var{type: :string, value: typed_value(:string, non_str.value) <> str}
+    %Var{type: :string, value: typed_value(:string, non_str.value) <> str.value}
   end
 
   def operator(num, num2, "is") do
