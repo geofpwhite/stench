@@ -30,17 +30,22 @@ defmodule Stench.Eval do
         },
         state
       ) do
-    index = eval(Stench.Parser.sanitize_inner(tree), state).cur_return.value
+    new_state = eval(Stench.Parser.sanitize_inner(tree), state)
 
-    bucket_var = Map.get(state.vars, bucket)
-
-    if bucket_var == nil do
-      %{state | cur_return: %Var{}}
+    if new_state == :error or new_state.cur_return == nil or new_state.cur_return == :error do
+      :error
     else
-      if bucket_var.type != :bucket do
-        :error
+      index = new_state.cur_return.value
+      bucket_var = Map.get(state.vars, bucket)
+
+      if bucket_var == nil do
+        %{state | cur_return: %Var{}}
       else
-        %{state | cur_return: Enum.at(bucket_var.value, index, %Var{type: nil, value: nil})}
+        if bucket_var.type != :bucket do
+          :error
+        else
+          %{state | cur_return: Enum.at(bucket_var.value, index, %Var{type: nil, value: nil})}
+        end
       end
     end
   end
