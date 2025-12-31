@@ -32,7 +32,7 @@ defmodule Stench.CLI do
   end
 
   def dump_for_repl(%Var{type: :bucket, value: ary}) do
-    Eval.dump_bucket(ary)
+    Stench.Eval.dump_bucket(ary)
   end
 
   def dump_for_repl(%Var{type: nil, value: nil}) do
@@ -79,7 +79,7 @@ defmodule Stench.CLI do
 
   def eval(line, state, debug) do
     program = String.replace(to_string(line), "^^", "^")
-    tokens = Lexer.tokenize(program)
+    tokens = Stench.Lexer.tokenize(program)
 
     if debug do
       IO.puts(inspect(tokens))
@@ -90,13 +90,13 @@ defmodule Stench.CLI do
         :error
 
       _ ->
-        tree = Parser.parse(tokens)
+        tree = Stench.Parser.parse(tokens)
 
         if debug do
           IO.puts(inspect(tree))
         end
 
-        state = Eval.eval(tree, state)
+        state = Stench.Eval.eval(tree, state)
 
         if debug do
           IO.puts(inspect(state))
@@ -119,6 +119,7 @@ defmodule Stench.CLI do
     end
 
     char = IO.binread(6)
+
     case char do
       <<127>> ->
         IO.write(IO.ANSI.cursor_left())
@@ -134,24 +135,24 @@ defmodule Stench.CLI do
 
       <<27, 91, 67>> ->
         IO.write(IO.ANSI.cursor_right())
-        repl(line, state, debug,min(index+1,0))
+        repl(line, state, debug, min(index + 1, 0))
 
       <<27, 91, 68>> ->
         IO.write(IO.ANSI.cursor_left())
-        repl(line, state, debug,max(index-1,-String.length(line)))
+        repl(line, state, debug, max(index - 1, -String.length(line)))
 
       char when char in ["\n", "\r", "\r\n"] ->
         IO.puts("")
         IO.write(IO.ANSI.cursor_left(100))
-        tokens = Lexer.tokenize(line)
+        tokens = Stench.Lexer.tokenize(line)
 
         if debug, do: IO.puts(inspect(tokens))
 
         case Enum.at(tokens, 0) do
           char when char in @infix_operators ->
-            tree = Parser.parse([state.cur_return | tokens])
+            tree = Stench.Parser.parse([state.cur_return | tokens])
 
-            state2 = Eval.eval(tree, state)
+            state2 = Stench.Eval.eval(tree, state)
 
             if debug do
               IO.puts(inspect(state2))
@@ -160,11 +161,11 @@ defmodule Stench.CLI do
 
             IO.puts("\n" <> IO.ANSI.cursor_left(100) <> dump_for_repl(state2.cur_return))
             IO.write(IO.ANSI.cursor_left(String.length(line) + 15))
-            repl("", state2, debug,index)
+            repl("", state2, debug, index)
 
           _ ->
-            tree = Parser.parse(tokens)
-            state2 = Eval.eval(tree, state)
+            tree = Stench.Parser.parse(tokens)
+            state2 = Stench.Eval.eval(tree, state)
 
             if debug do
               IO.puts(inspect(state2))
@@ -172,7 +173,7 @@ defmodule Stench.CLI do
             end
 
             IO.puts("\n" <> IO.ANSI.cursor_left(100) <> dump_for_repl(state2.cur_return))
-            repl("", state2, debug,index)
+            repl("", state2, debug, index)
         end
 
       _ ->
@@ -180,13 +181,13 @@ defmodule Stench.CLI do
           0 ->
             IO.write(char)
             repl(line <> char, state, debug)
+
           _ ->
-            {first,second} = String.split_at(line,String.length(line)+index)
-            IO.write(char<>second)
+            {first, second} = String.split_at(line, String.length(line) + index)
+            IO.write(char <> second)
             IO.write(IO.ANSI.cursor_left(String.length(second)))
 
-            repl(first<>char<>second,state,debug,index)
-
+            repl(first <> char <> second, state, debug, index)
         end
     end
   end
@@ -201,14 +202,14 @@ defmodule Stench.CLI do
     if line == "" || line == "\n" || line == "\r" do
       repl_cooked(state, debug)
     else
-      tokens = Lexer.tokenize(line)
+      tokens = Stench.Lexer.tokenize(line)
       if debug, do: IO.puts(inspect(tokens))
 
       case Enum.at(tokens, 0) do
         char when char in @infix_operators ->
-          tree = Parser.parse([state.cur_return | tokens])
+          tree = Stench.Parser.parse([state.cur_return | tokens])
 
-          state2 = Eval.eval(tree, state)
+          state2 = Stench.Eval.eval(tree, state)
 
           if debug do
             IO.puts(inspect(state2))
@@ -219,18 +220,18 @@ defmodule Stench.CLI do
           repl_cooked(state2, debug)
 
         _ ->
-          tree = Parser.parse(tokens)
+          tree = Stench.Parser.parse(tokens)
 
           if debug do
             IO.puts(inspect(tree))
           end
 
-          state2 = Eval.eval(tree, state)
+          state2 = Stench.Eval.eval(tree, state)
           if debug, do: IO.puts(inspect(state2))
 
           case state2.cur_return.type do
             :bucket ->
-              IO.puts(Eval.dump_bucket(state2.cur_return.value))
+              IO.puts(Stench.Eval.dump_bucket(state2.cur_return.value))
 
             _ ->
               IO.puts(state2.cur_return.value)

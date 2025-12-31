@@ -3,7 +3,7 @@ a = 5;
 b = [0,1,2,3,4,5,6,7,8,9];
 pileup i := b{ 
     dump (a + " " + i);
-    if (a is i) { 
+    if a is 5 { 
         dump "break";
         break;
     }

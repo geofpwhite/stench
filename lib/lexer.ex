@@ -1,4 +1,4 @@
-defmodule Lexer do
+defmodule Stench.Lexer do
   @operators Operators.operators()
   @keywords Keywords.keywords()
   @parens ["(", ")", "{", "}", "[", "]"]

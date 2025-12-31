@@ -1,4 +1,3 @@
-
 defmodule Var do
   defstruct type: nil, value: nil
 

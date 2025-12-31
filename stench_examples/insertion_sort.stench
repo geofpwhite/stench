@@ -1,0 +1,21 @@
+
+list = [5,1,7,34,7,3];
+
+odor insertionSort(list: bucket) bucket {
+    pileup i := list { 
+        pileup j=_index_;list[j]<list[j-1];j=j-1 {
+            hold = list[j];
+            list[j]=list[j-1];
+            list[j-1]=hold;
+            if j is 1 {
+                break;
+            }
+        }
+    }
+    list
+}
+
+ary = sniff insertionSort(list);
+
+dump list ;
+dump ary ;

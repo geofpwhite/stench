@@ -12,9 +12,14 @@ defmodule Stench.MixProject do
       # default_task: "Stench.CLI.main"
       test_coverage: [
         ignore_modules: [
-          Operators, Keywords, Stench.CLI
+          Operators,
+          Keywords,
+          Stench.CLI
         ]
-      ]
+      ],
+      description: "An interpreter I wrote that's toilet themed",
+      licenses: "MIT",
+      package: package()
     ]
   end
 
@@ -25,6 +30,17 @@ defmodule Stench.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["MIT"],
+      links: %{
+        "GitHub" => "https://github.com/geofpwhite/stench",
+        "Docs" => "https://hexdocs.pm/stench"
+      }
     ]
   end
 end
