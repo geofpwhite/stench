@@ -1,4 +1,4 @@
-defmodule Eval do
+defmodule Stench.Eval do
   @infix_operators Operators.infix_operators()
 
   def eval(cur) do
@@ -30,18 +30,22 @@ defmodule Eval do
         },
         state
       ) do
-    index = eval(tree, state).cur_return.value
-    bucket_var = Map.get(state.vars, bucket)
+    new_state = eval(Stench.Parser.sanitize_inner(tree), state)
 
-    if bucket_var == nil do
-      %{state | cur_return: %Var{}}
+    if new_state == :error or new_state.cur_return == nil or new_state.cur_return == :error do
+      :error
     else
-      if bucket_var.type != :bucket do
-        :error
-      else
-        x = %{state | cur_return: Enum.at(bucket_var.value, index, %Var{type: nil, value: nil})}
+      index = new_state.cur_return.value
+      bucket_var = Map.get(state.vars, bucket)
 
-        x
+      if bucket_var == nil do
+        %{state | cur_return: %Var{}}
+      else
+        if bucket_var.type != :bucket do
+          :error
+        else
+          %{state | cur_return: Enum.at(bucket_var.value, index, %Var{type: nil, value: nil})}
+        end
       end
     end
   end
@@ -66,8 +70,7 @@ defmodule Eval do
         state
       ) do
     s = eval(params, Map.get(state.odors, name), state)
-
-    s
+    %{state | cur_return: s.cur_return}
   end
 
   def eval(
@@ -146,14 +149,12 @@ defmodule Eval do
       v
       when v in @infix_operators ->
         ecl = eval(left, state).cur_return
-
         ecr = eval(right, state).cur_return
 
         %{state | cur_return: operator(ecl, ecr, value)}
 
       "=" ->
         ecr = eval(right, state)
-
         assign(left.value, ecr.cur_return, state)
 
       "\"" <> inner ->
@@ -167,7 +168,12 @@ defmodule Eval do
 
       "dump" ->
         s = eval(right, state).cur_return
-        if s.type == :bucket, do: IO.puts(dump_bucket(s.value)), else: IO.puts(inspect(s.value))
+        buf = Application.get_env(:stench, :buffer, :stdio)
+
+        if s.type == :bucket,
+          do: IO.puts(buf, dump_bucket(s.value)),
+          else: IO.puts(buf, inspect(s.value))
+
         state
 
       "size" ->
@@ -197,7 +203,7 @@ defmodule Eval do
         }
 
       _ ->
-        value = Parser.sanitize_inner(value)
+        value = Stench.Parser.sanitize_inner(value)
 
         case Integer.parse(value) do
           {num, _} ->
@@ -225,10 +231,34 @@ defmodule Eval do
 
   def eval(
         [],
-        %Odor{do: exec},
+        %Odor{params: [], do: exec, return_type: return},
         state
       ) do
-    eval(exec, state)
+    if return == nil do
+      %{eval(exec, state) | cur_return: %Var{}}
+    else
+      s = eval(exec, state)
+
+      s
+    end
+  end
+
+  def eval(
+        ary,
+        %Odor{params: []},
+        _
+      )
+      when length(ary) > 0 do
+    :error
+  end
+
+  def eval(
+        [],
+        %Odor{params: ary},
+        _
+      )
+      when length(ary) > 0 do
+    :error
   end
 
   def eval(
@@ -292,6 +322,22 @@ defmodule Eval do
       type: :string,
       value: string1.value <> to_string(string2.value)
     }
+  end
+
+  def operator(var, %Var{type: nil}, "+") when var.type == :string do
+    %Var{type: :string, value: var.value <> typed_value(:string, nil)}
+  end
+
+  def operator(%Var{type: nil}, var, "+") when var.type == :string do
+    %Var{type: :string, value: typed_value(:string, nil) <> var.value}
+  end
+
+  def operator(str, non_str, "+") when str.type == :string and non_str.type != :string do
+    %Var{type: :string, value: str.value <> typed_value(:string, non_str.value)}
+  end
+
+  def operator(non_str, str, "+") when str.type == :string and non_str.type != :string do
+    %Var{type: :string, value: typed_value(:string, non_str.value) <> str.value}
   end
 
   def operator(num, num2, "is") do
@@ -473,7 +519,7 @@ defmodule Eval do
   end
 
   def iterate(condition, increment, exec, state) do
-    s = eval(condition, state)
+    s = eval(Stench.Parser.sanitize_inner(condition), state)
 
     if s.cur_return.type == :bool and s.cur_return.value do
       s2 = eval(exec, state)
@@ -527,6 +573,41 @@ defmodule Eval do
 
       _ ->
         dump_bucket(tail, string <> to_string(head.value) <> ",")
+    end
+  end
+
+  def typed_value(type, nil) do
+    case type do
+      :string ->
+        "<nil>"
+
+      :num ->
+        0
+
+      :bucket ->
+        []
+
+      nil ->
+        nil
+
+      _ ->
+        :error
+    end
+  end
+
+  def typed_value(type, value) do
+    case type do
+      :string ->
+        to_string(value)
+
+      :num ->
+        case Integer.parse(value) do
+          {num, _} ->
+            num
+
+          _ ->
+            :error
+        end
     end
   end
 end

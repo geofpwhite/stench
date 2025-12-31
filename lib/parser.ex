@@ -1,4 +1,4 @@
-defmodule Parser do
+defmodule Stench.Parser do
   @infix_operators Operators.infix_operators()
   @prefix_operators Operators.prefix_operators()
   @operators Operators.operators()
@@ -112,20 +112,6 @@ defmodule Parser do
 
       _ ->
         case token do
-          "sniff" ->
-            {node, tail} = parse_sniff(tail)
-
-            case parse(tail) do
-              [x] ->
-                statements ++ [node] ++ x
-
-              ary when is_list(ary) ->
-                statements ++ [node] ++ ary
-
-              other ->
-                statements ++ [node] ++ [other]
-            end
-
           token when token in @infix_operators ->
             # if we are assigning
             if root or cur_node.value in @prefix_operators do
@@ -147,15 +133,19 @@ defmodule Parser do
             end
 
           "[" ->
-            if is_var_name?(cur_node.value) and not root do
-              {accessor, tail} = parse_list_index(cur_node.value, tail)
 
-              parse(accessor, tail, root, statements)
-            else
-              if cur_node.right != nil and is_var_name?(cur_node.right.value) and root do
+
+            cond do
+              is_var_name?(cur_node.value) and not root ->
+                {accessor, tail} = parse_list_index(cur_node.value, tail)
+
+                parse(accessor, tail, root, statements)
+
+              cur_node.right != nil and is_var_name?(cur_node.right.value) and (root or cur_node.value in @infix_operators)->
                 {accessor, tail} = parse_list_index(cur_node.right.value, tail)
                 parse(%{cur_node | right: accessor}, tail, statements: statements)
-              else
+
+              true ->
                 {bucket, tail} = parse_list(tail)
 
                 if cur_node == nil or cur_node.value == nil do
@@ -163,7 +153,6 @@ defmodule Parser do
                 else
                   parse(%{cur_node | right: bucket}, tail)
                 end
-              end
             end
 
           ";" ->
@@ -285,10 +274,12 @@ defmodule Parser do
     within = inner(tail)
     new_tail = Enum.slice(tail, Enum.count(within) + 1, Enum.count(tail) - Enum.count(within) - 1)
 
+    param_values =
+      Enum.reject(Enum.chunk_by(inner(tail), fn t -> t == "," end), fn t -> t == [","] end)
+
     {%Sniff{
        odor: odor,
-       param_values:
-         Enum.reject(Enum.chunk_by(inner(tail), fn t -> t == "," end), fn t -> t == [","] end)
+       param_values: param_values
      }, new_tail}
   end
 
@@ -395,8 +386,8 @@ defmodule Parser do
      },
      Enum.slice(
        new_tail,
-       min(Enum.count(todo_tokens) + 3, Enum.count(new_tail)-1),
-       max(0,Enum.count(new_tail) - Enum.count(todo_tokens) - 3)
+       min(Enum.count(todo_tokens) + 3, Enum.count(new_tail) - 1),
+       max(0, Enum.count(new_tail) - Enum.count(todo_tokens) - 3)
      )}
   end
 

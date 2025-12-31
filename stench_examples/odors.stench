@@ -1,7 +1,7 @@
 
 
 dump "f" ;
-odor dump_and_return(smell: string, other: int) int {
+odor dump_and_return(smell: string, other: num) num {
     dump smell;
     dump other;
     dump smell;
@@ -9,8 +9,20 @@ odor dump_and_return(smell: string, other: int) int {
         dump i;
     }
     other
-}
+};
+odor dump_and_no_return(smell: string, other: num) {
+    dump smell;
+    dump other;
+    dump smell;
+    pileup i=0;i<10;i=i+1{
+        dump i;
+        if i is other { 
+            break;
+        }
+    }
+};
 
-x = (sniff dump_and_return("x", 5));
-
+x = sniff dump_and_return("x", 5);
+y = sniff dump_and_no_return("x",5 );
 dump ("x is " + x);
+dump ("y is " + y);

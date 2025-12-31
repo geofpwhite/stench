@@ -1,0 +1,10 @@
+
+odor return(x: num) num {
+    x
+};
+
+f = sniff return("x");
+dump "f";
+dump f;
+s = (sniff return("x"));
+dump s;
