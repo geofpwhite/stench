@@ -15,7 +15,7 @@ reviews:
   # Ensure all available security and linting tools are active (they are on by default, but explicitly listing can be clear)
   # Custom, strict instructions for the AI reviewer
   path_instructions:
-    - path: "**/*"
+    - path: lib/*
       instructions: |
         You are a highly stringent and meticulous code reviewer.
         1. **Security First**: Prioritize the identification of potential security vulnerabilities, including hardcoded secrets, unvalidated user input, and insecure configurations.

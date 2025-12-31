@@ -516,8 +516,6 @@ defmodule Stench.Eval do
   def iterate(condition, increment, exec, state) do
     s = eval(Stench.Parser.sanitize_inner(condition), state)
 
-    #
-
     if s.cur_return.type == :bool and s.cur_return.value do
       s2 = eval(exec, state)
 

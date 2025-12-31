@@ -18,7 +18,7 @@ defmodule Stench.MixProject do
         ]
       ],
       description: "An interpreter I wrote that's toilet themed",
-      licenses: "MIT",
+      licenses: ["MIT"],
       package: package()
     ]
   end
