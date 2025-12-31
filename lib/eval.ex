@@ -38,16 +38,9 @@ defmodule Stench.Eval do
       %{state | cur_return: %Var{}}
     else
       if bucket_var.type != :bucket do
-
         :error
       else
-        x = %{state | cur_return: Enum.at(bucket_var.value, index, %Var{type: nil, value: nil})}
-
-        if index > Enum.count(bucket_var.value) do
-
-        end
-
-        x
+        %{state | cur_return: Enum.at(bucket_var.value, index, %Var{type: nil, value: nil})}
       end
     end
   end
@@ -153,14 +146,6 @@ defmodule Stench.Eval do
         ecl = eval(left, state).cur_return
         ecr = eval(right, state).cur_return
 
-
-
-
-
-
-
-
-
         %{state | cur_return: operator(ecl, ecr, value)}
 
       "=" ->
@@ -259,7 +244,6 @@ defmodule Stench.Eval do
         _
       )
       when length(ary) > 0 do
-
     :error
   end
 
@@ -269,7 +253,6 @@ defmodule Stench.Eval do
         _
       )
       when length(ary) > 0 do
-
     :error
   end
 
@@ -504,9 +487,6 @@ defmodule Stench.Eval do
         value: left.value < right.value
       }
     else
-
-
-
       :error
     end
   end
@@ -537,7 +517,6 @@ defmodule Stench.Eval do
     s = eval(Stench.Parser.sanitize_inner(condition), state)
 
     #
-
 
     if s.cur_return.type == :bool and s.cur_return.value do
       s2 = eval(exec, state)
@@ -609,7 +588,6 @@ defmodule Stench.Eval do
         nil
 
       _ ->
-
         :error
     end
   end
@@ -625,7 +603,6 @@ defmodule Stench.Eval do
             num
 
           _ ->
-
             :error
         end
     end
