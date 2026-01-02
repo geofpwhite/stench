@@ -3,6 +3,8 @@ defmodule Stench.Parser do
   @prefix_operators Operators.prefix_operators()
   @operators Operators.operators()
   @keywords Keywords.keywords()
+  # parse/1
+  @spec parse(any()) :: any()
   def parse([token | tail]) do
     t = %TreeNode{value: token}
 
@@ -13,6 +15,8 @@ defmodule Stench.Parser do
     end
   end
 
+  # parse/2
+  @spec parse(any(), any()) :: any()
   def parse([token | tail], statements) do
     t = %TreeNode{value: token}
 
@@ -23,10 +27,14 @@ defmodule Stench.Parser do
     end
   end
 
+  # parse/3
+  @spec parse(any(), maybe_improper_list(), any()) :: any()
   def parse(_, [operator], _) when operator in @operators do
     :error
   end
 
+  # parse/4
+  @spec parse(any(), maybe_improper_list(), any(), any()) :: any()
   def parse(cur, ary \\ [], root \\ false, statements \\ [])
 
   def parse(cur, [], _, statements) do
@@ -133,15 +141,28 @@ defmodule Stench.Parser do
             end
 
           "[" ->
-
+            IO.inspect(cur_node)
 
             cond do
+              Accessor.is_accessor(cur_node.value) ||
+                  MultiAccessor.is_multi_accessor(cur_node.value) ->
+                {accessor, tail} = parse_multi_index(cur_node.value, tail)
+                IO.puts("accessor " <> inspect(accessor))
+                IO.puts("tail " <> inspect(tail))
+
+                if root do
+                  parse(%{cur_node | right: %TreeNode{value: accessor}}, tail, root, statements)
+                else
+                  parse(%TreeNode{value: accessor}, tail, root, statements)
+                end
+
               is_var_name?(cur_node.value) and not root ->
                 {accessor, tail} = parse_list_index(cur_node.value, tail)
 
                 parse(accessor, tail, root, statements)
 
-              cur_node.right != nil and is_var_name?(cur_node.right.value) and (root or cur_node.value in @infix_operators)->
+              cur_node.right != nil and is_var_name?(cur_node.right.value) and
+                  (root or cur_node.value in @infix_operators) ->
                 {accessor, tail} = parse_list_index(cur_node.right.value, tail)
                 parse(%{cur_node | right: accessor}, tail, statements: statements)
 
@@ -184,14 +205,6 @@ defmodule Stench.Parser do
                 [sanitize_inner(parse(%TreeNode{value: "=", left: cur_node}, assignment, true))] ++
                 pn
             end
-
-          # x = parse(%TreeNode{value: "=", left: cur_node}, assignment, true)
-          # y=parse(next)
-          #
-          #
-          #
-          # x=[parse(%TreeNode{value: "=", left: cur_node}, tail, true)]
-          # statements++x
 
           char when char in [")", "]", "}"] ->
             cur_node
@@ -270,6 +283,8 @@ defmodule Stench.Parser do
     end
   end
 
+  # parse_sniff/1
+  @spec parse_sniff(nonempty_maybe_improper_list()) :: {Sniff.t(), list()}
   def parse_sniff([odor, "(" | tail]) do
     within = inner(tail)
     new_tail = Enum.slice(tail, Enum.count(within) + 1, Enum.count(tail) - Enum.count(within) - 1)
@@ -283,6 +298,8 @@ defmodule Stench.Parser do
      }, new_tail}
   end
 
+  # sanitize_inner/1
+  @spec sanitize_inner(any()) :: any()
   def sanitize_inner([inner, []]) do
     inner
   end
@@ -295,6 +312,8 @@ defmodule Stench.Parser do
     inner
   end
 
+  # is_var_name?/1
+  @spec is_var_name?(any()) :: boolean()
   def is_var_name?(value) do
     value != nil and to_string(value) != "" and
       not (String.first(value) in String.graphemes("1234567890") or
@@ -303,6 +322,48 @@ defmodule Stench.Parser do
              value in ["=", ","])
   end
 
+  def parse_multi_index(
+        %Accessor{
+          bucket_name: bucket_name,
+          index: index
+        },
+        tail
+      ) do
+    inner = inner_square_bracket(tail)
+    next_index = parse(inner)
+    inner_size = Enum.count(next_index)
+    total_size = Enum.count(tail)
+
+    {%MultiAccessor{bucket_name: bucket_name, indices: [index, next_index]},
+     Enum.slice(tail, inner_size + 1, total_size - inner_size - 1)}
+  end
+
+  def parse_multi_index(
+        %MultiAccessor{
+          bucket_name: bucket_name,
+          indices: indices
+        },
+        tail
+      ) do
+    inner = inner_square_bracket(tail)
+    next_index = parse(inner)
+    inner_size = Enum.count(next_index)
+    total_size = Enum.count(tail)
+
+    {
+      %MultiAccessor{bucket_name: bucket_name, indices: indices ++ [next_index]},
+      Enum.slice(tail, inner_size + 1, total_size - inner_size - 1)
+    }
+  end
+
+  def parse_multi_index(arg1, arg2) do
+    IO.inspect(arg1)
+    IO.inspect(arg2)
+    :error
+  end
+
+  # parse_list_index/2
+  @spec parse_list_index(any(), maybe_improper_list()) :: {TreeNode.t(), list()}
   def parse_list_index(var_name, tail) do
     inner = inner_square_bracket(tail)
 
@@ -320,6 +381,8 @@ defmodule Stench.Parser do
     Enum.reject(ary, fn element -> element == [] end)
   end
 
+  # parse_if/1
+  @spec parse_if(any()) :: {Conditional.t(), list()}
   def parse_if(tokens) do
     until_left_bracket = Enum.take_while(tokens, fn token -> token != "{" end)
 
@@ -351,6 +414,8 @@ defmodule Stench.Parser do
     end
   end
 
+  # parse_odor/1
+  @spec parse_odor(nonempty_maybe_improper_list()) :: {Odor.t(), list()}
   def parse_odor([func_name, "(" | tail]) do
     param_tokens = inner(tail)
 
@@ -391,6 +456,8 @@ defmodule Stench.Parser do
      )}
   end
 
+  # get_return_value/1
+  @spec get_return_value(any()) :: :error | {any(), any()}
   def get_return_value(tail) do
     case tail do
       ["{" | tail] ->
@@ -406,6 +473,8 @@ defmodule Stench.Parser do
     end
   end
 
+  # parse_pileup/1
+  @spec parse_pileup(any()) :: :error | {Loop.t(), list()}
   def parse_pileup(tokens) do
     until_left_bracket = Enum.take_while(tokens, fn token -> token != "{" end)
 
@@ -450,6 +519,8 @@ defmodule Stench.Parser do
     end
   end
 
+  # for_each/1
+  @spec for_each(nonempty_maybe_improper_list()) :: Loop.t()
   def for_each([name, ":=" | bucket]) do
     begin = [
       %TreeNode{value: "=", left: %TreeNode{value: "_index_"}, right: %TreeNode{value: "0"}},
@@ -505,6 +576,8 @@ defmodule Stench.Parser do
     }
   end
 
+  # is_for_each?/1
+  @spec is_for_each?(any()) :: boolean()
   def is_for_each?([_, ":=" | _]) do
     true
   end
@@ -513,10 +586,14 @@ defmodule Stench.Parser do
     false
   end
 
+  # inner/1
+  @spec inner(nonempty_maybe_improper_list()) :: any()
   def inner(ary) do
     inner(ary, [], 1)
   end
 
+  # inner/3
+  @spec inner(nonempty_maybe_improper_list(), any(), integer()) :: any()
   def inner(["(" | tail], inner, parens_count) do
     inner(tail, inner ++ ["("], parens_count + 1)
   end
@@ -533,10 +610,14 @@ defmodule Stench.Parser do
     inner(tail, inner ++ [head], parens_count)
   end
 
+  # inner_square_bracket/1
+  @spec inner_square_bracket(maybe_improper_list()) :: any()
   def inner_square_bracket(tokens) do
     inner_square_bracket(tokens, [], 1)
   end
 
+  # inner_square_bracket/3
+  @spec inner_square_bracket(maybe_improper_list(), any(), any()) :: any()
   def inner_square_bracket(["[" | tail], inner, parens_count) do
     inner_square_bracket(tail, inner ++ ["["], parens_count + 1)
   end
@@ -557,10 +638,14 @@ defmodule Stench.Parser do
     inner_square_bracket(tail, inner ++ [head], parens_count)
   end
 
+  # inner_curly_bracket/1
+  @spec inner_curly_bracket(maybe_improper_list()) :: any()
   def inner_curly_bracket(tokens) do
     inner_curly_bracket(tokens, [], 1)
   end
 
+  # inner_curly_bracket/3
+  @spec inner_curly_bracket(maybe_improper_list(), any(), any()) :: any()
   def inner_curly_bracket(["{" | tail], inner, parens_count) do
     inner_curly_bracket(tail, inner ++ ["{"], parens_count + 1)
   end
@@ -581,6 +666,8 @@ defmodule Stench.Parser do
     inner_curly_bracket(tail, inner ++ [head], parens_count)
   end
 
+  # parse_list/1
+  @spec parse_list(maybe_improper_list()) :: {Bucket.t(), list()}
   def parse_list(tokens) do
     until_right_bracket = inner_square_bracket(tokens, [], 1)
 
@@ -592,6 +679,8 @@ defmodule Stench.Parser do
      Enum.slice(tokens, right_bracket_index + 1, Enum.count(tokens) - right_bracket_index - 1)}
   end
 
+  # parse_list/2
+  @spec parse_list(list(), any()) :: any()
   def parse_list([head | tail], list) do
     parse_list(tail, list ++ parse(head))
   end
@@ -600,10 +689,20 @@ defmodule Stench.Parser do
     list
   end
 
+  # remove_empty/1
+  @spec remove_empty(any()) :: list()
+  def remove_empty(ary) do
+    Enum.reject(ary, fn element -> element == [] end)
+  end
+
+  # remove_unnested_commas/1
+  @spec remove_unnested_commas(list()) :: [...]
   def remove_unnested_commas(tokens) do
     remove_unnested_commas(tokens, [], [], 0)
   end
 
+  # remove_unnested_commas/4
+  @spec remove_unnested_commas(list(), list(), any(), any()) :: [...]
   def remove_unnested_commas(["[" | tail], new_tokens, new_token, num) do
     remove_unnested_commas(tail, new_tokens, new_token ++ ["["], num + 1)
   end

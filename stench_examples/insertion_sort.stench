@@ -1,6 +1,4 @@
-
-list = [5,1,7,34,7,3];
-
+list = [5,2,8,34,7,3];
 odor insertionSort(list: bucket) bucket {
     pileup i := list { 
         pileup j=_index_;j>0 and (list[j]<list[j-1]);j=j-1 {
@@ -15,4 +13,3 @@ odor insertionSort(list: bucket) bucket {
 ary = sniff insertionSort(list);
 dump list;
 dump ary ;
-"";
