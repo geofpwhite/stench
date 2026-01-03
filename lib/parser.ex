@@ -141,13 +141,10 @@ defmodule Stench.Parser do
             end
 
           "[" ->
-
             cond do
               Accessor.is_accessor(cur_node.value) ||
                   MultiAccessor.is_multi_accessor(cur_node.value) ->
                 {accessor, tail} = parse_multi_index(cur_node.value, tail)
-
-
 
                 if root do
                   parse(%{cur_node | right: %TreeNode{value: accessor}}, tail, root, statements)
@@ -163,7 +160,7 @@ defmodule Stench.Parser do
               cur_node.right != nil and is_var_name?(cur_node.right.value) and
                   (root or cur_node.value in @infix_operators) ->
                 {accessor, tail} = parse_list_index(cur_node.right.value, tail)
-                parse(%{cur_node | right: accessor}, tail, statements: statements)
+                parse(%{cur_node | right: accessor}, tail, root, statements)
 
               true ->
                 {bucket, tail} = parse_list(tail)
@@ -355,7 +352,7 @@ defmodule Stench.Parser do
     }
   end
 
-  def parse_multi_index(_,_) do
+  def parse_multi_index(_, _) do
     :error
   end
 
