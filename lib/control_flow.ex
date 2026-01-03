@@ -55,7 +55,7 @@ defmodule Sniff do
 end
 
 defmodule Accessor do
-  defstruct bucket_name: "", index: 0
+  defstruct bucket_name: "", index: %TreeNode{}
 
   def is_accessor(%Accessor{}), do: true
   def is_accessor(_), do: false

@@ -379,7 +379,6 @@ defmodule Stench.Eval do
     }
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(bucket1, bucket2, "+") when bucket1.type == :bucket and bucket2.type == :bucket do
     %Var{
       type: :bucket,
@@ -387,7 +386,6 @@ defmodule Stench.Eval do
     }
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(bucket, other, "+") when bucket.type == :bucket do
     %Var{
       type: :bucket,
@@ -395,7 +393,6 @@ defmodule Stench.Eval do
     }
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(other, bucket, "+") when bucket.type == :bucket do
     %Var{
       type: :bucket,
@@ -403,7 +400,6 @@ defmodule Stench.Eval do
     }
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(string1, string2, "+") when string1.type == :num and string2.type == :string do
     %Var{
       type: :string,
@@ -411,7 +407,6 @@ defmodule Stench.Eval do
     }
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(string1, string2, "+") when string1.type == :string and string2.type == :num do
     %Var{
       type: :string,
@@ -419,62 +414,50 @@ defmodule Stench.Eval do
     }
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(var, %Var{type: nil}, "+") when var.type == :string do
     %Var{type: :string, value: var.value <> typed_value(:string, nil)}
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(%Var{type: nil}, var, "+") when var.type == :string do
     %Var{type: :string, value: typed_value(:string, nil) <> var.value}
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(str, non_str, "+") when str.type == :string and non_str.type != :string do
     %Var{type: :string, value: str.value <> typed_value(:string, non_str.value)}
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(non_str, str, "+") when str.type == :string and non_str.type != :string do
     %Var{type: :string, value: typed_value(:string, non_str.value) <> str.value}
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(num, num2, "is") do
     is_op(num, num2)
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(num, num2, "and") do
     and_op(num, num2)
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(num, num2, "or") do
     or_op(num, num2)
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(num, num2, "xor") do
     xor_op(num, num2)
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(num, num2, ">") do
     gt_op(num, num2)
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(num, num2, "<") do
     lt_op(num, num2)
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(num, num2, "%") do
     mod_op(num, num2)
   end
 
-  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(num, num2, op) when num.type == :num and num2.type == :num do
     case op do
       "+" ->
