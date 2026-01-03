@@ -1,24 +1,17 @@
 defmodule Stench.Eval do
   @infix_operators Operators.infix_operators()
+  @type eval_input ::
+          list()
+          | Accessor.t()
+          | Bucket.t()
+          | Conditional.t()
+          | Loop.t()
+          | Odor.t()
+          | Sniff.t()
+          | TreeNode.t()
+          | MultiAccessor.t()
 
-  @spec eval(
-          maybe_improper_list(
-            maybe_improper_list(maybe_improper_list(any(), [] | map()) | map(), [] | map())
-            | %{
-                :__struct__ => Accessor | Bucket | Conditional | Loop | Odor | Sniff | TreeNode,
-                optional(any()) => any()
-              },
-            []
-            | %{
-                :__struct__ => Accessor | Bucket | Conditional | Loop | Odor | Sniff | TreeNode,
-                optional(any()) => any()
-              }
-          )
-          | %{
-              :__struct__ => Accessor | Bucket | Conditional | Loop | Odor | Sniff | TreeNode,
-              optional(any()) => any()
-            }
-        ) :: any()
+  @spec eval(eval_input()) :: State.t()
   def eval(cur) do
     eval(cur, %State{})
   end
