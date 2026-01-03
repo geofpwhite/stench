@@ -528,7 +528,7 @@ defmodule Stench.Parser do
       }
     ]
 
-    condition = %TreeNode{
+    condition = [%TreeNode{
       value: "<",
       left: %TreeNode{
         value: "_index_"
@@ -539,7 +539,7 @@ defmodule Stench.Parser do
           value: "_ary_"
         }
       }
-    }
+    }]
 
     increment = [
       %TreeNode{

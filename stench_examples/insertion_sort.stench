@@ -12,4 +12,4 @@ odor insertionSort(list: bucket) bucket {
 
 ary = sniff insertionSort(list);
 dump list;
-dump ary ;
+dump ary;
