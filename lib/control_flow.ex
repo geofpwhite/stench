@@ -3,9 +3,9 @@ defmodule Loop do
 
   @type t() :: %Loop{
           begin: %Var{},
-          condition: [%TreeNode{}],
-          increment: [%TreeNode{}],
-          do: [%TreeNode{}]
+          condition: list(%TreeNode{}),
+          increment: list(%TreeNode{}),
+          do: list(%TreeNode{})
         }
 end
 
@@ -13,9 +13,9 @@ defmodule Conditional do
   defstruct condition: [%TreeNode{}], do: [%TreeNode{}], else: [%TreeNode{}]
 
   @type t() :: %Conditional{
-          condition: [%TreeNode{}],
-          do: [%TreeNode{}],
-          else: [%TreeNode{}]
+          condition: list(%TreeNode{}),
+          do: list(%TreeNode{}),
+          else: list(%TreeNode{})
         }
 end
 
