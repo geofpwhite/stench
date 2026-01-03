@@ -222,8 +222,6 @@ defmodule Stench.Eval do
       "dump" ->
         s = eval(right, state).cur_return
         buf = Application.get_env(:stench, :buffer, :stdio)
-        IO.puts(inspect(right))
-        IO.puts(inspect(state))
 
         if s.type == :bucket,
           do: IO.puts(buf, dump_bucket(s.value)),
@@ -280,7 +278,6 @@ defmodule Stench.Eval do
     s = eval(head, state)
 
     if s == :error or s.cur_return in [:error, nil] do
-      IO.puts("here2")
       :error
     else
       eval(%{m | indices: tail}, state, index_values ++ [s.cur_return.value])
@@ -295,7 +292,6 @@ defmodule Stench.Eval do
     bucket = Map.get(state.vars, bucket_name, nil)
 
     if bucket == nil or bucket.type != :bucket do
-      IO.puts("here")
       :error
     else
       %{state | cur_return: get_value_from_multi_index(index_values, bucket.value)}
@@ -797,7 +793,6 @@ defmodule Stench.Eval do
   end
 
   def get_value_from_multi_index(_, nil) do
-    IO.puts("here")
     :error
   end
 

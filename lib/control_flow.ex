@@ -29,8 +29,8 @@ defmodule Odor do
 
   @type t() :: %Odor{
           name: String.t(),
-          params: list(),
-          do: list(),
+          params: list(Param),
+          do: list(TreeNode),
           return_type: %Var{}
         }
 end
@@ -50,7 +50,7 @@ defmodule Sniff do
 
   @type t() :: %Sniff{
           odor: String.t(),
-          param_values: list()
+          param_values: list(String.t())
         }
 end
 
