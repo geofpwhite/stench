@@ -493,10 +493,10 @@ defmodule Stench.Eval do
           indices: [final]
         },
         rhs,
-        _,
+        state,
         cur_list
       ) do
-    replaced = List.replace_at(cur_list, eval(final).cur_return.value, rhs)
+    replaced = List.replace_at(cur_list, eval(final,state).cur_return.value, rhs)
     %Var{type: :bucket, value: replaced}
   end
 
