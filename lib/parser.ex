@@ -346,7 +346,7 @@ defmodule Stench.Parser do
       ) do
     inner = inner_square_bracket(tail)
     next_index = parse(inner)
-    inner_size = Enum.count(next_index)
+    inner_size = Enum.count(inner)
     total_size = Enum.count(tail)
 
     {
