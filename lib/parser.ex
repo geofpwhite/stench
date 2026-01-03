@@ -331,7 +331,7 @@ defmodule Stench.Parser do
       ) do
     inner = inner_square_bracket(tail)
     next_index = parse(inner)
-    inner_size = Enum.count(next_index)
+    inner_size = Enum.count(inner)
     total_size = Enum.count(tail)
 
     {%MultiAccessor{bucket_name: bucket_name, indices: [index, next_index]},
@@ -377,6 +377,8 @@ defmodule Stench.Parser do
      }, Enum.slice(tail, inner_count + 1, Enum.count(tail) - inner_count - 1)}
   end
 
+  # remove_empty/1
+  @spec remove_empty(any()) :: list()
   def remove_empty(ary) do
     Enum.reject(ary, fn element -> element == [] end)
   end
@@ -687,12 +689,6 @@ defmodule Stench.Parser do
 
   def parse_list([], list) do
     list
-  end
-
-  # remove_empty/1
-  @spec remove_empty(any()) :: list()
-  def remove_empty(ary) do
-    Enum.reject(ary, fn element -> element == [] end)
   end
 
   # remove_unnested_commas/1

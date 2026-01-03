@@ -52,55 +52,6 @@ defmodule Stench.Eval do
     eval(tail, s)
   end
 
-  @spec eval(%TreeNode{value: %Accessor{}}, %State{}) :: any()
-  def eval(
-        %TreeNode{
-          value: %Accessor{} = a
-        },
-        state
-      ) do
-    eval(a, state)
-  end
-
-  def eval(
-        %MultiAccessor{} = m,
-        state
-      ) do
-    eval(m, state, [])
-  end
-
-  def eval(
-        %MultiAccessor{
-          indices: [head | tail]
-        } = m,
-        state,
-        index_values
-      ) do
-    s = eval(head, state)
-
-    if s == :error or s.cur_return in [:error, nil] do
-      IO.puts("here2")
-      :error
-    else
-      eval(%{m | indices: tail}, state, index_values ++ [s.cur_return.value])
-    end
-  end
-
-  def eval(
-        %MultiAccessor{bucket_name: bucket_name, indices: []},
-        state,
-        index_values
-      ) do
-    bucket = Map.get(state.vars, bucket_name, nil)
-
-    if bucket == nil or bucket.type != :bucket do
-      IO.puts("here")
-      :error
-    else
-      %{state | cur_return: get_value_from_multi_index(index_values, bucket.value)}
-    end
-  end
-
   @spec eval(%Accessor{bucket_name: String.t(), index: TreeNode}, State) :: any()
   def eval(
         %Accessor{
@@ -129,6 +80,16 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec eval(%TreeNode{value: %Accessor{}}, %State{}) :: any()
+  def eval(
+        %TreeNode{
+          value: %Accessor{} = a
+        },
+        state
+      ) do
+    eval(a, state)
+  end
+
   @spec eval(%Odor{name: any(), params: any(), do: any(), return_type: any()}, any()) :: any()
   def eval(
         %Odor{
@@ -140,6 +101,13 @@ defmodule Stench.Eval do
         state
       ) do
     %{state | odors: Map.put(state.odors, name, o)}
+  end
+
+  def eval(
+        %MultiAccessor{} = m,
+        state
+      ) do
+    eval(m, state, [])
   end
 
   @spec eval(%Sniff{odor: any(), param_values: any()}, any()) :: any()
@@ -299,6 +267,38 @@ defmodule Stench.Eval do
           :error ->
             %{state | cur_return: Map.get(state.vars, value, %Var{})}
         end
+    end
+  end
+
+  def eval(
+        %MultiAccessor{
+          indices: [head | tail]
+        } = m,
+        state,
+        index_values
+      ) do
+    s = eval(head, state)
+
+    if s == :error or s.cur_return in [:error, nil] do
+      IO.puts("here2")
+      :error
+    else
+      eval(%{m | indices: tail}, state, index_values ++ [s.cur_return.value])
+    end
+  end
+
+  def eval(
+        %MultiAccessor{bucket_name: bucket_name, indices: []},
+        state,
+        index_values
+      ) do
+    bucket = Map.get(state.vars, bucket_name, nil)
+
+    if bucket == nil or bucket.type != :bucket do
+      IO.puts("here")
+      :error
+    else
+      %{state | cur_return: get_value_from_multi_index(index_values, bucket.value)}
     end
   end
 
@@ -521,7 +521,7 @@ defmodule Stench.Eval do
           indices: [final]
         },
         rhs,
-        state,
+        _,
         cur_list
       ) do
     replaced = List.replace_at(cur_list, eval(final).cur_return.value, rhs)
@@ -549,7 +549,6 @@ defmodule Stench.Eval do
         rhs,
         state
       ) do
-    IO.puts("assigning multi index")
     cur_bucket = Map.get(state.vars, bucket_name, %Var{}).value
     e = eval(%Accessor{bucket_name: bucket_name, index: head}, state).cur_return
     replaced = assign(%{b | indices: tail}, rhs, state, e.value)
