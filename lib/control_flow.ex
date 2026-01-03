@@ -5,10 +5,10 @@ defmodule Loop do
             do: [%TreeNode{}]
 
   @type t() :: %Loop{
-          begin: list(%TreeNode{}),
-          condition: list(%TreeNode{}),
-          increment: list(%TreeNode{}),
-          do: list(%TreeNode{})
+          begin: list(TreeNode.t()),
+          condition: list(TreeNode.t()),
+          increment: list(TreeNode.t()),
+          do: list(TreeNode.t())
         }
 end
 
@@ -16,9 +16,9 @@ defmodule Conditional do
   defstruct condition: [%TreeNode{}], do: [%TreeNode{}], else: [%TreeNode{}]
 
   @type t() :: %Conditional{
-          condition: list(%TreeNode{}),
-          do: list(%TreeNode{}),
-          else: list(%TreeNode{})
+          condition: list(TreeNode.t()),
+          do: list(TreeNode.t()),
+          else: list(TreeNode.t())
         }
 end
 
@@ -29,9 +29,9 @@ defmodule Odor do
 
   @type t() :: %Odor{
           name: String.t(),
-          params: list(Param),
-          do: list(TreeNode),
-          return_type: %Var{}
+          params: list(Param.t()),
+          do: list(TreeNode.t()),
+          return_type: Var.t()
         }
 end
 
@@ -41,7 +41,7 @@ defmodule Param do
   @type t() :: %Param{
           name: String.t(),
           type: any(),
-          value: %Var{}
+          value: Var.t()
         }
 end
 
@@ -62,7 +62,7 @@ defmodule Accessor do
 
   @type t() :: %Accessor{
           bucket_name: String.t(),
-          index: TreeNode
+          index: TreeNode.t()
         }
 end
 
@@ -74,6 +74,6 @@ defmodule MultiAccessor do
 
   @type t() :: %MultiAccessor{
           bucket_name: String.t(),
-          indices: list(TreeNode)
+          indices: list(TreeNode.t())
         }
 end
