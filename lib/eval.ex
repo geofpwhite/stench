@@ -1,28 +1,51 @@
 defmodule Stench.Eval do
   @infix_operators Operators.infix_operators()
+  @type eval_input ::
+          list()
+          | Accessor.t()
+          | Bucket.t()
+          | Conditional.t()
+          | Loop.t()
+          | Odor.t()
+          | Sniff.t()
+          | TreeNode.t()
+          | MultiAccessor.t()
 
+  @spec eval(eval_input()) :: State.t()
   def eval(cur) do
     eval(cur, %State{})
   end
 
+  @spec eval(
+          maybe_improper_list(
+            maybe_improper_list(maybe_improper_list(any(), [] | map()) | map(), [] | map())
+            | %{
+                :__struct__ => Accessor | Bucket | Conditional | Loop | Odor | Sniff | TreeNode,
+                optional(any()) => any()
+              },
+            []
+            | %{
+                :__struct__ => Accessor | Bucket | Conditional | Loop | Odor | Sniff | TreeNode,
+                optional(any()) => any()
+              }
+          )
+          | %{
+              :__struct__ => Accessor | Bucket | Conditional | Loop | Odor | Sniff | TreeNode,
+              optional(any()) => any()
+            },
+          any()
+        ) :: any()
   def eval([], state) do
     state
   end
 
+  @spec eval([any()], any()) :: any()
   def eval([cur | tail], state) do
     s = eval(cur, state)
     eval(tail, s)
   end
 
-  def eval(
-        %TreeNode{
-          value: %Accessor{} = a
-        },
-        state
-      ) do
-    eval(a, state)
-  end
-
+  @spec eval(%Accessor{bucket_name: String.t(), index: TreeNode}, State) :: any()
   def eval(
         %Accessor{
           bucket_name: bucket,
@@ -50,6 +73,17 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec eval(%TreeNode{value: %Accessor{}}, %State{}) :: any()
+  def eval(
+        %TreeNode{
+          value: %Accessor{} = a
+        },
+        state
+      ) do
+    eval(a, state)
+  end
+
+  @spec eval(%Odor{name: any(), params: any(), do: any(), return_type: any()}, any()) :: any()
   def eval(
         %Odor{
           name: name,
@@ -63,6 +97,14 @@ defmodule Stench.Eval do
   end
 
   def eval(
+        %MultiAccessor{} = m,
+        state
+      ) do
+    eval(m, state, [])
+  end
+
+  @spec eval(%Sniff{odor: any(), param_values: any()}, any()) :: any()
+  def eval(
         %Sniff{
           odor: name,
           param_values: params
@@ -73,6 +115,7 @@ defmodule Stench.Eval do
     %{state | cur_return: s.cur_return}
   end
 
+  @spec eval(%Bucket{garbage: any()}, any()) :: any()
   def eval(
         %Bucket{
           garbage: _
@@ -82,6 +125,7 @@ defmodule Stench.Eval do
     %{state | cur_return: eval(b, state, [])}
   end
 
+  @spec eval(%Loop{condition: any(), begin: any(), increment: any(), do: any()}, any()) :: any()
   def eval(
         %Loop{
           condition: condition,
@@ -114,6 +158,7 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec eval(%Conditional{condition: any(), do: any(), else: any()}, any()) :: any()
   def eval(%Conditional{condition: statements, do: ary, else: to_do_if_false}, state) do
     s = eval(statements, state)
 
@@ -130,6 +175,7 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec eval(%TreeNode{left: any(), right: any(), value: any()}, any()) :: any()
   def eval(%TreeNode{left: left, right: right, value: value}, state) do
     # entering
     case value do
@@ -216,6 +262,37 @@ defmodule Stench.Eval do
   end
 
   def eval(
+        %MultiAccessor{
+          indices: [head | tail]
+        } = m,
+        state,
+        index_values
+      ) do
+    s = eval(head, state)
+
+    if s == :error or s.cur_return in [:error, nil] do
+      :error
+    else
+      eval(%{m | indices: tail}, state, index_values ++ [s.cur_return.value])
+    end
+  end
+
+  def eval(
+        %MultiAccessor{bucket_name: bucket_name, indices: []},
+        state,
+        index_values
+      ) do
+    bucket = Map.get(state.vars, bucket_name, nil)
+
+    if bucket == nil or bucket.type != :bucket do
+      :error
+    else
+      %{state | cur_return: get_value_from_multi_index(index_values, bucket.value)}
+    end
+  end
+
+  @spec eval([any()], %Odor{params: [any()]}, any()) :: any()
+  def eval(
         [param | tail],
         %Odor{params: [p2 | t2]} = odor,
         state
@@ -229,6 +306,7 @@ defmodule Stench.Eval do
     eval(tail, %{odor | params: t2}, s)
   end
 
+  @spec eval([], %Odor{params: [], do: any(), return_type: any()}, any()) :: any()
   def eval(
         [],
         %Odor{params: [], do: exec, return_type: return},
@@ -243,6 +321,7 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec eval(maybe_improper_list(any(), [] | Bucket.t()) | Bucket.t(), any(), any()) :: any()
   def eval(
         ary,
         %Odor{params: []},
@@ -252,6 +331,7 @@ defmodule Stench.Eval do
     :error
   end
 
+  @spec eval([], %Odor{}, any()) :: any()
   def eval(
         [],
         %Odor{params: ary},
@@ -261,6 +341,7 @@ defmodule Stench.Eval do
     :error
   end
 
+  @spec eval(%Bucket{garbage: [any()]}, any(), any()) :: any()
   def eval(
         %Bucket{
           garbage: [head | tail]
@@ -272,6 +353,7 @@ defmodule Stench.Eval do
     eval(%Bucket{garbage: tail}, state, vars ++ [v])
   end
 
+  @spec eval(%Bucket{garbage: []}, any(), any()) :: %Var{type: :bucket, value: any()}
   def eval(
         %Bucket{
           garbage: []
@@ -282,6 +364,7 @@ defmodule Stench.Eval do
     %Var{type: :bucket, value: vars}
   end
 
+  @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(string1, string2, "+") when string1.type == :string and string2.type == :string do
     %Var{
       type: :string,
@@ -406,6 +489,58 @@ defmodule Stench.Eval do
   end
 
   def assign(
+        %MultiAccessor{
+          indices: [final]
+        },
+        rhs,
+        state,
+        cur_list
+      ) do
+    replaced = List.replace_at(cur_list, eval(final,state).cur_return.value, rhs)
+    %Var{type: :bucket, value: replaced}
+  end
+
+  def assign(
+        %MultiAccessor{
+          indices: [head | tail]
+        } = b,
+        rhs,
+        state,
+        cur_list
+      ) do
+    replaced = assign(%{b | indices: tail}, rhs, state, Enum.at(cur_list, head, nil))
+    li = List.replace_at(cur_list, head, replaced)
+    %Var{type: :bucket, value: li}
+  end
+
+  def assign(
+        %MultiAccessor{
+          bucket_name: bucket_name,
+          indices: [head | tail]
+        } = b,
+        rhs,
+        state
+      ) do
+    cur_bucket = Map.get(state.vars, bucket_name, %Var{}).value
+    e = eval(%Accessor{bucket_name: bucket_name, index: head}, state).cur_return
+    replaced = assign(%{b | indices: tail}, rhs, state, e.value)
+
+    %{
+      state
+      | vars:
+          Map.put(state.vars, bucket_name, %Var{
+            type: :bucket,
+            value: List.replace_at(cur_bucket, eval(head, state).cur_return.value, replaced)
+          })
+    }
+  end
+
+  @spec assign(
+          %Accessor{},
+          %Var{},
+          %State{}
+        ) :: :error | %{:cur_return => any(), :vars => map(), optional(any()) => any()}
+  def assign(
         %Accessor{
           bucket_name: bucket_name,
           index: index
@@ -430,6 +565,11 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec assign(any(), any(), any()) :: %{
+          :cur_return => any(),
+          :vars => map(),
+          optional(any()) => any()
+        }
   def assign(lhs, rhs, state) do
     %{
       state
@@ -438,6 +578,7 @@ defmodule Stench.Eval do
     }
   end
 
+  @spec is_op(any(), any()) :: Var.t()
   def is_op(left, right) do
     %Var{
       type: :bool,
@@ -445,6 +586,7 @@ defmodule Stench.Eval do
     }
   end
 
+  @spec or_op(any(), any()) :: Var.t()
   def or_op(left, right) do
     %Var{
       type: :bool,
@@ -454,6 +596,7 @@ defmodule Stench.Eval do
     }
   end
 
+  @spec not_op(any()) :: :error | Var.t()
   def not_op(bool) do
     case bool.type do
       :bool ->
@@ -467,6 +610,7 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec and_op(any(), any()) :: Var.t()
   def and_op(left, right) do
     %Var{
       type: :bool,
@@ -476,6 +620,7 @@ defmodule Stench.Eval do
     }
   end
 
+  @spec xor_op(any(), any()) :: Var.t()
   def xor_op(left, right) do
     %Var{
       type: :bool,
@@ -485,6 +630,7 @@ defmodule Stench.Eval do
     }
   end
 
+  @spec lt_op(any(), any()) :: :error | Var.t()
   def lt_op(left, right) do
     if left.type == right.type and left.type == :num do
       %Var{
@@ -496,6 +642,7 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec gt_op(any(), any()) :: :error | Var.t()
   def gt_op(left, right) do
     if left.type == right.type and left.type == :num do
       %Var{
@@ -507,6 +654,7 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec mod_op(any(), any()) :: :error | Var.t()
   def mod_op(left, right) do
     if left.type == right.type and left.type == :num do
       %Var{
@@ -518,6 +666,7 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec iterate(any(), any(), any(), any()) :: any()
   def iterate(condition, increment, exec, state) do
     s = eval(Stench.Parser.sanitize_inner(condition), state)
 
@@ -535,10 +684,12 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec find(any(), any()) :: boolean()
   def find([cur], key) do
     cur.left.value == key
   end
 
+  @spec find(any(), any()) :: boolean()
   def find([cur | tail], key) do
     if cur.left.value == key do
       true
@@ -547,14 +698,17 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec find(any(), any()) :: boolean()
   def find(begin, key) do
     find([begin], key)
   end
 
+  @spec dump_bucket([...]) :: nonempty_binary()
   def dump_bucket(vars) do
     dump_bucket(vars, "[")
   end
 
+  @spec dump_bucket([...], binary()) :: nonempty_binary()
   def dump_bucket([final], string) do
     case final.type do
       :bucket ->
@@ -566,6 +720,7 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec dump_bucket([...], binary()) :: nonempty_binary()
   def dump_bucket([head | tail], string) do
     case head.type do
       :bucket ->
@@ -576,6 +731,7 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec typed_value(any(), any()) :: :error | nil | binary() | [] | integer()
   def typed_value(type, nil) do
     case type do
       :string ->
@@ -595,6 +751,7 @@ defmodule Stench.Eval do
     end
   end
 
+  @spec typed_value(any(), any()) :: :error | nil | binary() | [] | integer()
   def typed_value(type, value) do
     case type do
       :string ->
@@ -609,5 +766,18 @@ defmodule Stench.Eval do
             :error
         end
     end
+  end
+
+  def get_value_from_multi_index(_, nil) do
+    :error
+  end
+
+  def get_value_from_multi_index([final], list) do
+    e = Enum.at(list, final, nil)
+    e
+  end
+
+  def get_value_from_multi_index([head | tail], list) do
+    get_value_from_multi_index(tail, Enum.at(list, head, %Var{}).value)
   end
 end

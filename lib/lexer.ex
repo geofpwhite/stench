@@ -62,6 +62,7 @@ defmodule Stench.Lexer do
     tokenize(line, tokens, "")
   end
 
+  @spec tokenize(binary(), any(), any()) :: any()
   def tokenize(line, tokens, cur) do
     {first, next} = String.split_at(line, 1)
 
@@ -104,12 +105,15 @@ defmodule Stench.Lexer do
     end
   end
 
+  @spec tokenize(binary()) :: any()
   def tokenize(line) do
     tokenize(line, [], "")
   end
 
+  @spec first_quote(binary()) :: :error | {binary(), pos_integer()}
   def first_quote(line), do: first_quote(line, 0)
 
+  @spec first_quote(binary(), any()) :: :error | {binary(), pos_integer()}
   def first_quote(line, i) do
     if i >= String.length(line) do
       :error

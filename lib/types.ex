@@ -16,12 +16,3 @@ defmodule Bucket do
           garbage: list(TreeNode)
         }
 end
-
-defmodule Accessor do
-  defstruct bucket_name: "", index: 0
-
-  @type t() :: %Accessor{
-          bucket_name: String.t(),
-          index: TreeNode
-        }
-end

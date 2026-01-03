@@ -112,10 +112,7 @@ defmodule Stench.CLI do
       IO.puts(IO.ANSI.cursor_down(100))
       IO.puts(IO.ANSI.cursor_left(100))
 
-      IO.write(
-        IO.ANSI.red() <>
-          "☁" <> IO.ANSI.green() <> "☁" <> IO.ANSI.blue() <> "☁ " <> IO.ANSI.reset()
-      )
+      IO.write(IO.ANSI.white() <> "🚽" <> IO.ANSI.color(94) <> "☁ " <> IO.ANSI.reset())
     end
 
     char = IO.binread(6)
