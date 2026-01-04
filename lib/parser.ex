@@ -49,9 +49,16 @@ defmodule Stench.Parser do
     parse(t, ary, root, statements)
   end
 
-  def parse(%Bucket{garbage: _} = b, [token | tail], root, statements)
+  def parse(%Bucket{} = b, [token | tail], root, statements)
       when token in ["+", "-"] do
     parse(%TreeNode{value: token, left: b}, tail, root, statements)
+  end
+
+  def parse(%Bucket{} = b, [next | tail], root, statements) do
+    parse(%TreeNode{value: next}, tail, root, statements ++ [b])
+  end
+  def parse(%Sniff{} = s, [next | tail], root, statements) do
+    parse(%TreeNode{value: next}, tail, root, statements ++ [s])
   end
 
   def parse(cur_node, [token | tail], root, statements) do
@@ -142,7 +149,13 @@ defmodule Stench.Parser do
 
           "[" ->
             cond do
-              Accessor.is_accessor(cur_node.value) ||
+              # Accessor.is_accessor(cur_node) or
+              #     MultiAccessor.is_multi_accessor(cur_node) ->
+              #   {accessor, tail} = parse_multi_index(cur_node, tail)
+
+              #   parse(%TreeNode{value: accessor}, tail, root, statements)
+
+              Accessor.is_accessor(cur_node.value) or
                   MultiAccessor.is_multi_accessor(cur_node.value) ->
                 {accessor, tail} = parse_multi_index(cur_node.value, tail)
 
@@ -151,6 +164,17 @@ defmodule Stench.Parser do
                 else
                   parse(%TreeNode{value: accessor}, tail, root, statements)
                 end
+
+              cur_node.right != nil and
+                (Accessor.is_accessor(cur_node.right.value) or
+                   MultiAccessor.is_multi_accessor(cur_node.right.value)) and
+                  root ->
+                {accessor, tail} = parse_multi_index(cur_node.right.value, tail)
+
+                p = parse(%{cur_node | right: %TreeNode{value: accessor}}, tail, root, statements)
+                IO.inspect(p)
+                IO.inspect(cur_node)
+                p
 
               is_var_name?(cur_node.value) and not root ->
                 {accessor, tail} = parse_list_index(cur_node.value, tail)
@@ -528,18 +552,20 @@ defmodule Stench.Parser do
       }
     ]
 
-    condition = [%TreeNode{
-      value: "<",
-      left: %TreeNode{
-        value: "_index_"
-      },
-      right: %TreeNode{
-        value: "size",
+    condition = [
+      %TreeNode{
+        value: "<",
+        left: %TreeNode{
+          value: "_index_"
+        },
         right: %TreeNode{
-          value: "_ary_"
+          value: "size",
+          right: %TreeNode{
+            value: "_ary_"
+          }
         }
       }
-    }]
+    ]
 
     increment = [
       %TreeNode{

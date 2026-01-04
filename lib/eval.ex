@@ -175,6 +175,9 @@ defmodule Stench.Eval do
     end
   end
 
+  def eval(%TreeNode{left: left, right: right, value: %MultiAccessor{}=m}, state) do
+    eval(m,state)
+  end
   @spec eval(%TreeNode{left: any(), right: any(), value: any()}, any()) :: any()
   def eval(%TreeNode{left: left, right: right, value: value}, state) do
     # entering
@@ -313,11 +316,12 @@ defmodule Stench.Eval do
         state
       ) do
     if return == nil do
+      IO.puts "nil return"
       %{eval(exec, state) | cur_return: %Var{}}
     else
       s = eval(exec, state)
 
-      s
+      %{state|cur_return: s.cur_return}
     end
   end
 
