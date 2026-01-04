@@ -271,6 +271,7 @@ defmodule StenchTest.OdorsAndSniffs do
 end
 
 defmodule StenchTest.IsChecks do
+  use ExUnit.Case
   test "\"is\" checks" do
     assert not MultiAccessor.is_multi_accessor(0)
     assert MultiAccessor.is_multi_accessor(%MultiAccessor{})

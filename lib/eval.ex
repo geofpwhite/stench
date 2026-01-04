@@ -501,14 +501,6 @@ defmodule Stench.Eval do
         state,
         cur_list
       ) do
-  def assign(
-        %MultiAccessor{
-          indices: [final]
-        },
-        rhs,
-        state,
-        cur_list
-      ) do
     case eval(final, state) do
       :error -> :error
       %{cur_return: nil} -> :error
