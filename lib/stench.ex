@@ -10,6 +10,10 @@ defmodule Stench.CLI do
   def main_repl(raw \\ nil, debug \\ nil) do
     case raw do
       :raw ->
+        System.at_exit(fn _status ->
+          IO.puts("Terminal mode restored to cooked.")
+        end)
+
         :shell.start_interactive({:noshell, :raw})
 
         if debug == :debug do
@@ -17,6 +21,8 @@ defmodule Stench.CLI do
         else
           repl("", %State{})
         end
+
+        :shell.start_interactive()
 
       _ ->
         if debug == :debug do
@@ -27,8 +33,12 @@ defmodule Stench.CLI do
     end
   end
 
-  def main(_args \\ []) do
-    main_repl()
+  def main(args \\ []) do
+    if(args == [:raw]) do
+      main_repl(:raw)
+    else
+      main_repl()
+    end
   end
 
   def dump_for_repl(%Var{type: :bucket, value: ary}) do
@@ -85,24 +95,36 @@ defmodule Stench.CLI do
       IO.puts(inspect(tokens))
     end
 
-    case Enum.at(tokens, 0) do
-      char when char in @operators ->
-        :error
+    if tokens == :error do
+      :lex_error
+    else
+      case Enum.at(tokens, 0) do
+        char when char in @operators ->
+          :syntax_error
 
-      _ ->
-        tree = Stench.Parser.parse(tokens)
+        _ ->
+          tree = Stench.Parser.parse(tokens)
 
-        if debug do
-          IO.puts(inspect(tree))
-        end
+          if tree == :error do
+            :parse_error
+          else
+            if debug do
+              IO.puts(inspect(tree))
+            end
 
-        state = Stench.Eval.eval(tree, state)
+            state = Stench.Eval.eval(tree, state)
 
-        if debug do
-          IO.puts(inspect(state))
-        end
+            if state == :error do
+              :eval_error
+            else
+              if debug do
+                IO.puts(inspect(state))
+              end
 
-        state
+              state
+            end
+          end
+      end
     end
   end
 
@@ -111,7 +133,6 @@ defmodule Stench.CLI do
     if line == "" do
       IO.puts(IO.ANSI.cursor_down(100))
       IO.puts(IO.ANSI.cursor_left(100))
-
       IO.write(IO.ANSI.white() <> "🚽" <> IO.ANSI.color(94) <> "☁ " <> IO.ANSI.reset())
     end
 
@@ -145,32 +166,36 @@ defmodule Stench.CLI do
 
         if debug, do: IO.puts(inspect(tokens))
 
-        case Enum.at(tokens, 0) do
-          char when char in @infix_operators ->
-            tree = Stench.Parser.parse([state.cur_return | tokens])
+        if line == "exit" do
+          :exit
+        else
+          case Enum.at(tokens, 0) do
+            char when char in @infix_operators ->
+              tree = Stench.Parser.parse([state.cur_return | tokens])
 
-            state2 = Stench.Eval.eval(tree, state)
+              state2 = Stench.Eval.eval(tree, state)
 
-            if debug do
-              IO.puts(inspect(state2))
-              IO.puts(inspect(tree))
-            end
+              if debug do
+                IO.puts(inspect(state2))
+                IO.puts(inspect(tree))
+              end
 
-            IO.puts("\n" <> IO.ANSI.cursor_left(100) <> dump_for_repl(state2.cur_return))
-            IO.write(IO.ANSI.cursor_left(String.length(line) + 15))
-            repl("", state2, debug, index)
+              IO.puts("\n" <> IO.ANSI.cursor_left(100) <> dump_for_repl(state2.cur_return))
+              IO.write(IO.ANSI.cursor_left(String.length(line) + 15))
+              repl("", state2, debug, index)
 
-          _ ->
-            tree = Stench.Parser.parse(tokens)
-            state2 = Stench.Eval.eval(tree, state)
+            _ ->
+              tree = Stench.Parser.parse(tokens)
+              state2 = Stench.Eval.eval(tree, state)
 
-            if debug do
-              IO.puts(inspect(state2))
-              IO.puts(inspect(tree))
-            end
+              if debug do
+                IO.puts(inspect(state2))
+                IO.puts(inspect(tree))
+              end
 
-            IO.puts("\n" <> IO.ANSI.cursor_left(100) <> dump_for_repl(state2.cur_return))
-            repl("", state2, debug, index)
+              IO.puts("\n" <> IO.ANSI.cursor_left(100) <> dump_for_repl(state2.cur_return))
+              repl("", state2, debug, index)
+          end
         end
 
       _ ->
