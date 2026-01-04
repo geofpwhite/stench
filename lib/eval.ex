@@ -175,9 +175,11 @@ defmodule Stench.Eval do
     end
   end
 
-  def eval(%TreeNode{left: left, right: right, value: %MultiAccessor{}=m}, state) do
-    eval(m,state)
+  @spec eval(%TreeNode{left: any(), right: any(), value: MultiAccessor}, any()) :: any()
+  def eval(%TreeNode{left: _, right: _, value: %MultiAccessor{} = m}, state) do
+    eval(m, state)
   end
+
   @spec eval(%TreeNode{left: any(), right: any(), value: any()}, any()) :: any()
   def eval(%TreeNode{left: left, right: right, value: value}, state) do
     # entering
@@ -316,12 +318,12 @@ defmodule Stench.Eval do
         state
       ) do
     if return == nil do
-      IO.puts "nil return"
+      IO.puts("nil return")
       %{eval(exec, state) | cur_return: %Var{}}
     else
       s = eval(exec, state)
 
-      %{state|cur_return: s.cur_return}
+      %{state | cur_return: s.cur_return}
     end
   end
 
@@ -500,7 +502,7 @@ defmodule Stench.Eval do
         state,
         cur_list
       ) do
-    replaced = List.replace_at(cur_list, eval(final,state).cur_return.value, rhs)
+    replaced = List.replace_at(cur_list, eval(final, state).cur_return.value, rhs)
     %Var{type: :bucket, value: replaced}
   end
 
