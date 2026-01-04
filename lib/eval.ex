@@ -318,7 +318,6 @@ defmodule Stench.Eval do
         state
       ) do
     if return == nil do
-      IO.puts("nil return")
       %{eval(exec, state) | cur_return: %Var{}}
     else
       s = eval(exec, state)

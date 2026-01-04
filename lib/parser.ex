@@ -172,8 +172,8 @@ defmodule Stench.Parser do
                 {accessor, tail} = parse_multi_index(cur_node.right.value, tail)
 
                 p = parse(%{cur_node | right: %TreeNode{value: accessor}}, tail, root, statements)
-                IO.inspect(p)
-                IO.inspect(cur_node)
+
+
                 p
 
               is_var_name?(cur_node.value) and not root ->
