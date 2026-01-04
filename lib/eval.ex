@@ -501,8 +501,21 @@ defmodule Stench.Eval do
         state,
         cur_list
       ) do
-    replaced = List.replace_at(cur_list, eval(final, state).cur_return.value, rhs)
-    %Var{type: :bucket, value: replaced}
+  def assign(
+        %MultiAccessor{
+          indices: [final]
+        },
+        rhs,
+        state,
+        cur_list
+      ) do
+    case eval(final, state) do
+      :error -> :error
+      %{cur_return: nil} -> :error
+      %{cur_return: %{value: index}} ->
+        replaced = List.replace_at(cur_list, index, rhs)
+        %Var{type: :bucket, value: replaced}
+    end
   end
 
   def assign(
