@@ -158,108 +158,104 @@ end
 defmodule StenchTest.OdorsAndSniffs do
   use ExUnit.Case
 
-  defmodule StenchTest.OdorsAndSniffs do
-    use ExUnit.Case
+  test "basic odor definition and sniffing" do
+    state = Stench.CLI.eval("odor my_odor() { x = 10; y = 20; (dump x ; )} sniff my_odor;")
+    assert state.vars["x"] == nil
+    assert state.vars["y"] == nil
+  end
 
-    test "basic odor definition and sniffing" do
-      state = Stench.CLI.eval("odor my_odor() { x = 10; y = 20; (dump x ; )} sniff my_odor;")
-      assert state.vars["x"] == nil
-      assert state.vars["y"] == nil
-    end
+  test "odor with parameters" do
+    state =
+      Stench.CLI.eval(
+        "odor my_odor(a: num, b: num) num { c = a + b;  c; } c = sniff my_odor(5, 7);"
+      )
 
-    test "odor with parameters" do
-      state =
-        Stench.CLI.eval(
-          "odor my_odor(a: num, b: num) num { c = a + b;  c; } c = sniff my_odor(5, 7);"
-        )
+    assert state.vars["c"].type == :num and state.vars["c"].value == 12
+  end
 
-      assert state.vars["c"].type == :num and state.vars["c"].value == 12
-    end
-
-    test "nested odors" do
-      state =
-        Stench.CLI.eval("""
-        odor outer_odor() bucket {
-          x = 5;
-          odor inner_odor(n: num) num {
-            y = n * 2;
-            y;
-          }
-          y = sniff inner_odor(x);
-          [x,y,"y"]
+  test "nested odors" do
+    state =
+      Stench.CLI.eval("""
+      odor outer_odor() bucket {
+        x = 5;
+        odor inner_odor(n: num) num {
+          y = n * 2;
+          y;
         }
-        ary = sniff outer_odor();
-        """)
+        y = sniff inner_odor(x);
+        [x,y,"y"]
+      }
+      ary = sniff outer_odor();
+      """)
 
-      assert state.vars["ary"].type == :bucket and Enum.count(state.vars["ary"].value) == 3
-    end
+    assert state.vars["ary"].type == :bucket and Enum.count(state.vars["ary"].value) == 3
+  end
 
-    test "odor with return value" do
-      state = Stench.CLI.eval("odor my_odor() num { 42; } result = sniff my_odor();")
-      assert state.vars["result"].type == :num and state.vars["result"].value == 42
-    end
+  test "odor with return value" do
+    state = Stench.CLI.eval("odor my_odor() num { 42; } result = sniff my_odor();")
+    assert state.vars["result"].type == :num and state.vars["result"].value == 42
+  end
 
-    test "odor with conditional logic" do
-      state =
-        Stench.CLI.eval("""
-        odor conditional_odor(a: num) string {
-          result = "";
-          if a > 10 {
-            result = "greater";
-            result;
-          } else {
-            result = "smaller";
-            result;
-          }
+  test "odor with conditional logic" do
+    state =
+      Stench.CLI.eval("""
+      odor conditional_odor(a: num) string {
+        result = "";
+        if a > 10 {
+          result = "greater";
+          result;
+        } else {
+          result = "smaller";
+          result;
         }
-        result = sniff conditional_odor(15);
-        result2 = sniff conditional_odor(5);
-        """)
+      }
+      result = sniff conditional_odor(15);
+      result2 = sniff conditional_odor(5);
+      """)
 
-      assert state.vars["result"].type == :string and state.vars["result"].value == "greater"
-      assert state.vars["result2"].type == :string and state.vars["result2"].value == "smaller"
-    end
+    assert state.vars["result"].type == :string and state.vars["result"].value == "greater"
+    assert state.vars["result2"].type == :string and state.vars["result2"].value == "smaller"
+  end
 
-    test "odor with loops" do
-      state =
-        Stench.CLI.eval("""
-        odor loop_odor() num{
-          sum = 0;
-          pileup i=1; i<6; i=i+1 {
-            sum = sum + i;
-          }
-          sum;
+  test "odor with loops" do
+    state =
+      Stench.CLI.eval("""
+      odor loop_odor() num{
+        sum = 0;
+        pileup i=1; i<6; i=i+1 {
+          sum = sum + i;
         }
-        num = sniff loop_odor();
-        dump (num + " is da num");
-        """)
+        sum;
+      }
+      num = sniff loop_odor();
+      dump (num + " is da num");
+      """)
 
-      assert state.vars["num"].type == :num and state.vars["num"].value == 15
-    end
+    assert state.vars["num"].type == :num and state.vars["num"].value == 15
+  end
 
-    test "recursive odor" do
-      state =
-        Stench.CLI.eval("""
-        odor recursive(n: num) num{
-          dump ("n is " + n);
-          r = 0;
-          if n < 10 {
-            dump "true";
-            x = n + 1 ;
-            s = sniff recursive(x);
-            r = n + s;
-            r;
-          }else{
-            dump "false";
-            r = n;
-            r;
-          }
+  test "recursive odor" do
+    state =
+      Stench.CLI.eval("""
+      odor recursive(n: num) num{
+        dump ("n is " + n);
+        r = 0;
+        if n < 10 {
+          dump "true";
+          x = n + 1 ;
+          s = sniff recursive(x);
+          r = n + s;
+          r;
+        }else{
+          dump "false";
+          r = n;
+          r;
         }
-        num = sniff recursive(0);
-        """)
+      }
+      num = sniff recursive(0);
+      """)
 
-      assert state.vars["num"].type == :num and state.vars["num"].value == 55
-    end
+    assert state.vars["num"].type == :num and state.vars["num"].value == 55
   end
 
   test "invalid odor" do
@@ -272,7 +268,9 @@ defmodule StenchTest.OdorsAndSniffs do
 
     assert x == :lex_error
   end
+end
 
+defmodule StenchTest.IsChecks do
   test "\"is\" checks" do
     assert not MultiAccessor.is_multi_accessor(0)
     assert MultiAccessor.is_multi_accessor(%MultiAccessor{})
