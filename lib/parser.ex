@@ -57,6 +57,7 @@ defmodule Stench.Parser do
   def parse(%Bucket{} = b, [next | tail], root, statements) do
     parse(%TreeNode{value: next}, tail, root, statements ++ [b])
   end
+
   def parse(%Sniff{} = s, [next | tail], root, statements) do
     parse(%TreeNode{value: next}, tail, root, statements ++ [s])
   end
@@ -172,7 +173,6 @@ defmodule Stench.Parser do
                 {accessor, tail} = parse_multi_index(cur_node.right.value, tail)
 
                 p = parse(%{cur_node | right: %TreeNode{value: accessor}}, tail, root, statements)
-
 
                 p
 

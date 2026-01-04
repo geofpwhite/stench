@@ -173,7 +173,6 @@ defmodule StenchTest.OdorsAndSniffs do
           "odor my_odor(a: num, b: num) num { c = a + b;  c; } c = sniff my_odor(5, 7);"
         )
 
-
       assert state.vars["c"].type == :num and state.vars["c"].value == 12
     end
 
@@ -191,7 +190,6 @@ defmodule StenchTest.OdorsAndSniffs do
         }
         ary = sniff outer_odor();
         """)
-
 
       assert state.vars["ary"].type == :bucket and Enum.count(state.vars["ary"].value) == 3
     end
@@ -260,7 +258,6 @@ defmodule StenchTest.OdorsAndSniffs do
         num = sniff recursive(0);
         """)
 
-
       assert state.vars["num"].type == :num and state.vars["num"].value == 55
     end
   end
@@ -272,7 +269,8 @@ defmodule StenchTest.OdorsAndSniffs do
       "
       }
       """)
-    assert x==:lex_error
+
+    assert x == :lex_error
   end
 
   test "\"is\" checks" do
