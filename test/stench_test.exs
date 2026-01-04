@@ -274,4 +274,11 @@ defmodule StenchTest.OdorsAndSniffs do
       """)
     assert x==:lex_error
   end
+
+  test "\"is\" checks" do
+    assert not MultiAccessor.is_multi_accessor(0)
+    assert MultiAccessor.is_multi_accessor(%MultiAccessor{})
+    assert not Accessor.is_accessor(0)
+    assert Accessor.is_accessor(%Accessor{})
+  end
 end
