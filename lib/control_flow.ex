@@ -57,7 +57,7 @@ end
 defmodule Accessor do
   defstruct bucket_name: "", index: %TreeNode{}
 
-  def is_accessor(%Accessor{bucket_name: _, index: _}), do: true
+  def is_accessor(%Accessor{}), do: true
   def is_accessor(_), do: false
 
   @type t() :: %Accessor{
@@ -69,7 +69,7 @@ end
 defmodule MultiAccessor do
   defstruct bucket_name: "", indices: []
 
-  def is_multi_accessor(%MultiAccessor{bucket_name: _, indices: _}), do: true
+  def is_multi_accessor(%MultiAccessor{}), do: true
   def is_multi_accessor(_), do: false
 
   @type t() :: %MultiAccessor{
