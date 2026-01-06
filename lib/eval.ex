@@ -42,7 +42,14 @@ defmodule Stench.Eval do
   @spec eval([any()], any()) :: any()
   def eval([cur | tail], state) do
     s = eval(cur, state)
-    eval(tail, s)
+
+    case s do
+      :error ->
+        :error
+
+      _ ->
+        eval(tail, s)
+    end
   end
 
   @spec eval(%Accessor{bucket_name: String.t(), index: TreeNode}, State) :: any()
