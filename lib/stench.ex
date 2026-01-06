@@ -99,7 +99,7 @@ defmodule Stench.CLI do
       :lex_error
     else
       case Enum.at(tokens, 0) do
-        char when char in @operators ->
+        char when char in @operators and char != "not" ->
           :syntax_error
 
         _ ->

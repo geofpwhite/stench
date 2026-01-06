@@ -112,7 +112,14 @@ defmodule Stench.Eval do
         state
       ) do
     s = eval(params, Map.get(state.odors, name), state)
-    %{state | cur_return: s.cur_return}
+
+    case s do
+      :error ->
+        :error
+
+      _ ->
+        %{state | cur_return: s.cur_return}
+    end
   end
 
   @spec eval(%Bucket{garbage: any()}, any()) :: any()
@@ -206,7 +213,14 @@ defmodule Stench.Eval do
 
       "=" ->
         ecr = eval(right, state)
-        assign(left.value, ecr.cur_return, state)
+
+        case ecr do
+          :error ->
+            :error
+
+          _ ->
+            assign(left.value, ecr.cur_return, state)
+        end
 
       "\"" <> inner ->
         %{
@@ -304,7 +318,7 @@ defmodule Stench.Eval do
       ) do
     s =
       eval(
-        %TreeNode{value: "=", left: %TreeNode{value: p2.name}, right: %TreeNode{value: param}},
+        %TreeNode{value: "=", left: %TreeNode{value: p2.name}, right: param},
         state
       )
 
@@ -502,8 +516,12 @@ defmodule Stench.Eval do
         cur_list
       ) do
     case eval(final, state) do
-      :error -> :error
-      %{cur_return: nil} -> :error
+      :error ->
+        :error
+
+      %{cur_return: nil} ->
+        :error
+
       %{cur_return: %{value: index}} ->
         replaced = List.replace_at(cur_list, index, rhs)
         %Var{type: :bucket, value: replaced}

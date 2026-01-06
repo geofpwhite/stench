@@ -305,7 +305,10 @@ defmodule Stench.Parser do
     new_tail = Enum.slice(tail, Enum.count(within) + 1, Enum.count(tail) - Enum.count(within) - 1)
 
     param_values =
-      Enum.reject(Enum.chunk_by(inner(tail), fn t -> t == "," end), fn t -> t == [","] end)
+      Enum.map(Enum.reject(Enum.chunk_by(inner(tail), fn t -> t == "," end), fn t -> t == [","] end),
+      fn param_tokens ->
+        parse(param_tokens)
+      end)
 
     {%Sniff{
        odor: odor,
