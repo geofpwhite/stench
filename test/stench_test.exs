@@ -54,6 +54,14 @@ defmodule StenchTest.BooleanOperators do
     assert state.cur_return.type == :bool and state.cur_return.value == false
     state = Stench.CLI.eval("1 is 1")
     assert state.cur_return.type == :bool and state.cur_return.value == true
+    state = Stench.CLI.eval("((1 is 2) and (1 is 1));")
+    assert state.cur_return.type == :bool and state.cur_return.value == false
+    state = Stench.CLI.eval("2 is 2 and (1 is 1);")
+    assert state.cur_return.type == :bool and state.cur_return.value == true
+    state = Stench.CLI.eval("(1 is 1) or (1 is 2);")
+    assert state.cur_return.type == :bool and state.cur_return.value == true
+    state = Stench.CLI.eval("1 is 1 or (1 is 2);")
+    assert state.cur_return.type == :bool and state.cur_return.value == true
   end
 end
 
@@ -69,8 +77,8 @@ defmodule StenchTest.ControlFlow do
   end
 
   test "pileups" do
-    state = Stench.CLI.eval("a = 4; pileup i=0 ; i<10 ; i=i+1 { a = 5;}")
-    assert state.cur_return.type == :num and state.vars["a"].value == 5
+    state = Stench.CLI.eval("a = 4; pileup i=0 ; i<10 ; i=i+1 { a = i;}")
+    assert state.cur_return.type == :num and state.vars["a"].value == 9
     state = Stench.CLI.eval("a = 4; pileup i := [1,2,3] { a = i;}")
     assert state.cur_return.type == :num and state.vars["a"].value == 3
   end
@@ -277,5 +285,57 @@ defmodule StenchTest.IsChecks do
     assert MultiAccessor.is_multi_accessor(%MultiAccessor{})
     assert not Accessor.is_accessor(0)
     assert Accessor.is_accessor(%Accessor{})
+  end
+end
+
+
+# for more coverage
+
+defmodule StenchTest.DumpTests do
+  use ExUnit.Case
+
+  test "dumping various types" do
+    state = Stench.CLI.eval("dump 42")
+    assert state.cur_return.type == nil
+
+    state = Stench.CLI.eval("dump \"Hello, World!\"")
+    assert state.cur_return.type == nil
+
+    state = Stench.CLI.eval("dump true")
+    assert state.cur_return.type == nil
+
+    state = Stench.CLI.eval("dump [1, 2, 3]")
+    assert state.cur_return.type == nil
+  end
+end
+defmodule StenchTest.IfElseTests do
+  use ExUnit.Case
+
+  test "if-else statements" do
+    state = Stench.CLI.eval("a = 10; if a > 5 { a = a + 1; } else { a = a - 1; }")
+    assert state.vars["a"].type == :num and state.vars["a"].value == 11
+
+    state = Stench.CLI.eval("a = 3; if a > 5 { a = a + 1; } else { a = a - 1; }")
+    assert state.vars["a"].type == :num and state.vars["a"].value == 2
+  end
+end
+
+defmodule StenchTest.BucketOperations do
+  use ExUnit.Case
+
+  test "operators with buckets" do
+
+    state = Stench.CLI.eval("arr = [1, 2, 3]; x = arr + [[2,3]];")
+    assert state.vars["x"].type == :bucket and Enum.count(state.vars["x"].value) == 4
+    state = Stench.CLI.eval("x[3][1]=4;dump x;",state)
+    check_var = Enum.at(state.vars["x"].value,3).value |> Enum.at(1)
+    IO.inspect(state)
+    assert check_var.type == :num and check_var.value== 4
+    state = Stench.CLI.eval("arr = [1, 2, 3]; x = arr + 2;")
+    assert state.vars["x"].type == :bucket and Enum.count(state.vars["x"].value) == 4
+    state = Stench.CLI.eval("arr = [1, 2, 3]; x = arr + [2];")
+    assert state.vars["x"].type == :bucket and Enum.count(state.vars["x"].value) == 4
+    state = Stench.CLI.eval("arr = [1, 2, 3]; x = 2+ arr + [2];")
+    assert state.vars["x"].type == :bucket and Enum.count(state.vars["x"].value) == 5
   end
 end
