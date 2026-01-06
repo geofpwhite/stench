@@ -291,6 +291,29 @@ end
 
 # for more coverage
 
+defmodule StenchTest.SpecialKeywords do
+  use ExUnit.Case
+
+  test "use of special keywords as variable names" do
+    state = Stench.CLI.eval(" x = [1,2,3]; sizex = size x; wipe x; ")
+    IO.inspect(state,label: "Final State")
+    assert (Map.get(state.vars,"x",%Var{}).type == :nil) and state.vars["sizex"].type == :num and state.vars["sizex"].value == 3
+
+    state = Stench.CLI.eval("""
+    x = [1,2,3];
+    typex = typeof x;
+    y = 2 ;
+    typey = typeof y;
+    z = "hello";
+    typez = typeof z;
+    """)
+
+    assert state.vars["typex"].type == :type and state.vars["typex"].value == :bucket
+    assert state.vars["typey"].type == :type and state.vars["typey"].value == :num
+    assert state.vars["typez"].type == :type and state.vars["typez"].value == :string
+  end
+end
+
 defmodule StenchTest.DumpTests do
   use ExUnit.Case
 

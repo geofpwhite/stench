@@ -145,16 +145,11 @@ defmodule Stench.Parser do
               %{cur_node | right: parse(%TreeNode{value: token}, tail, true)}
             else
               new = %TreeNode{value: token}
-              parse(new, tail, true, statements: statements)
+              parse(new, tail, true,  statements)
             end
 
           "[" ->
             cond do
-              # Accessor.is_accessor(cur_node) or
-              #     MultiAccessor.is_multi_accessor(cur_node) ->
-              #   {accessor, tail} = parse_multi_index(cur_node, tail)
-
-              #   parse(%TreeNode{value: accessor}, tail, root, statements)
 
               Accessor.is_accessor(cur_node.value) or
                   MultiAccessor.is_multi_accessor(cur_node.value) ->

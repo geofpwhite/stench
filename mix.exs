@@ -14,7 +14,8 @@ defmodule Stench.MixProject do
         ignore_modules: [
           Operators,
           Keywords,
-          Stench.CLI
+          Stench.CLI,
+          VM
         ]
       ],
       description: "An interpreter I wrote that's toilet themed",
