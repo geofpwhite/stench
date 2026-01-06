@@ -50,6 +50,20 @@ defmodule StenchTest.BooleanOperators do
   use ExUnit.Case
 
   test "boolean operators" do
+    state = Stench.CLI.eval("not true;")
+    assert state.cur_return.type == :bool and state.cur_return.value == false
+    state = Stench.CLI.eval("not false")
+    assert state.cur_return.type == :bool and state.cur_return.value == true
+    state = Stench.CLI.eval("false")
+    assert state.cur_return.type == :bool and state.cur_return.value == false
+    state = Stench.CLI.eval("true")
+    assert state.cur_return.type == :bool and state.cur_return.value == true
+    state = Stench.CLI.eval("false and true ")
+    assert state.cur_return.type == :bool and state.cur_return.value == false
+    state = Stench.CLI.eval("true and not false")
+    assert state.cur_return.type == :bool and state.cur_return.value == true
+    state = Stench.CLI.eval("true and not true")
+    assert state.cur_return.type == :bool and state.cur_return.value == false
     state = Stench.CLI.eval("1 is 2")
     assert state.cur_return.type == :bool and state.cur_return.value == false
     state = Stench.CLI.eval("1 is 1")
@@ -81,6 +95,19 @@ defmodule StenchTest.ControlFlow do
     assert state.cur_return.type == :num and state.vars["a"].value == 9
     state = Stench.CLI.eval("a = 4; pileup i := [1,2,3] { a = i;}")
     assert state.cur_return.type == :num and state.vars["a"].value == 3
+    state = Stench.CLI.eval("""
+    a = 4;
+    pileup i := [1,2]{
+      pileup i := [1,2,3] {
+        a = i;
+        if a is 2 {
+          break;
+        }
+      }
+      break;
+    }
+    """)
+    assert state.vars["a"].type == :num and state.vars["a"].value == 2
   end
 end
 
@@ -105,6 +132,8 @@ defmodule StenchTest.FileExecution do
     assert s.vars["a"].type == :num and s.vars["a"].value == 91
     s = Stench.CLI.exec("stench_examples/odors.stench")
     assert s.vars["x"].type == :num and s.vars["x"].value == 5
+    s = Stench.CLI.exec("stench_examples/factorial.stench")
+    assert s.vars["x"].type == :num and s.vars["x"].value == 120
   end
 end
 
@@ -179,6 +208,29 @@ defmodule StenchTest.OdorsAndSniffs do
       )
 
     assert state.vars["c"].type == :num and state.vars["c"].value == 12
+  end
+
+  test "invalid number of parameters" do
+    x =
+      Stench.CLI.eval("""
+      odor my_odor(a: num, b: num) num {
+        c = a + b;
+        c;
+      }
+      c = sniff my_odor(5);
+      """)
+
+    assert x == :eval_error
+    x =
+      Stench.CLI.eval("""
+      odor my_odor(a: num, b: num) num {
+        c = a + b;
+        c;
+      }
+      c = sniff my_odor(5,6,7);
+      """)
+
+    assert x == :eval_error
   end
 
   test "nested odors" do
@@ -294,7 +346,7 @@ end
 defmodule StenchTest.SpecialKeywords do
   use ExUnit.Case
 
-  test "use of special keywords as variable names" do
+  test "use of special keywords" do
     state = Stench.CLI.eval(" x = [1,2,3]; sizex = size x; wipe x; ")
     IO.inspect(state,label: "Final State")
     assert (Map.get(state.vars,"x",%Var{}).type == :nil) and state.vars["sizex"].type == :num and state.vars["sizex"].value == 3
@@ -311,6 +363,8 @@ defmodule StenchTest.SpecialKeywords do
     assert state.vars["typex"].type == :type and state.vars["typex"].value == :bucket
     assert state.vars["typey"].type == :type and state.vars["typey"].value == :num
     assert state.vars["typez"].type == :type and state.vars["typez"].value == :string
+    state = Stench.CLI.eval(" x = 10; typeof x;")
+    assert state.cur_return.type== :type and state.cur_return.value== :num
   end
 end
 

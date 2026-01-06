@@ -1,0 +1,10 @@
+odor factorial(number: num) num {
+    if number < 2 {
+        1;
+    }else{
+        s =  sniff factorial(number - 1);
+        number * s ;
+    }
+}
+x = sniff factorial(5);
+dump x;
