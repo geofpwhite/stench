@@ -33,11 +33,44 @@ defmodule Stench.CLI do
     end
   end
 
+  def socket() do
+
+  end
+
+
   def main(args \\ []) do
-    if(args == [:raw]) do
-      main_repl(:raw)
-    else
-      main_repl()
+    # if input is piped in, just eval that and exit
+    args = System.argv()
+
+    case args do
+      ["-s"] ->
+        TCPServer.start_server(4040)
+        :ok
+      ["-e" | tail] ->
+        IO.puts(inspect(eval(Enum.join(tail, " "))))
+        :ok
+
+      ["--debug" | tail] ->
+        eval(Enum.join(tail, " "), true)
+        :ok
+      [:raw] ->
+        main_repl(:raw)
+
+      [:debug] ->
+        main_repl(nil, :debug)
+
+      [:raw, :debug] ->
+        main_repl(:raw, :debug)
+
+      [:debug, :raw] ->
+        main_repl(:raw, :debug)
+
+      _ ->
+        if(args == [:raw] || args == :raw) do
+          main_repl(:raw)
+        else
+          main_repl()
+        end
     end
   end
 
