@@ -25,7 +25,6 @@ defmodule TCPServer do
         s = data |> Stench.CLI.eval() |> inspect()
         Application.put_env(:stench, :buffer, :stdout)
         out_ary = StringIO.contents(pid) |> Tuple.to_list()
-        out_len = Enum.count(out_ary)
 
         out = out_ary |> Enum.join()
         :gen_tcp.send(socket, out <> "\n" <> s)
