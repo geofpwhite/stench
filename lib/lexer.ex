@@ -107,7 +107,7 @@ defmodule Stench.Lexer do
 
   @spec tokenize(binary()) :: any()
   def tokenize(line) do
-    tokenize(line, [], "")
+      tokenize(line, [], "")
   end
 
   @spec first_quote(binary()) :: :error | {binary(), pos_integer()}

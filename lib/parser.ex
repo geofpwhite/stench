@@ -237,7 +237,7 @@ defmodule Stench.Parser do
                     sanitize_inner(
                       parse(
                         inner,
-                        Enum.slice(tail, ilength + 0, tlength - ilength - 0),
+                        Enum.slice(tail, ilength + 1, tlength - ilength - 1),
                         root
                       )
                     )

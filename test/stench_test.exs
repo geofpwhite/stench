@@ -5,6 +5,7 @@ defmodule StenchTest.Arithmetic do
     assert Stench.CLI.eval("6*2").cur_return.value == 12
     assert Stench.CLI.eval("(6*2)").cur_return.value == 12
     assert Stench.CLI.eval("(6*2)+(1-1)").cur_return.value == 12
+    assert Stench.CLI.eval("6*2+1-1").cur_return.value == 12
   end
 
   test "complex integer operations" do
