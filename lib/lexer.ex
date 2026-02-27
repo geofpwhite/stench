@@ -80,12 +80,11 @@ defmodule Stench.Lexer do
             )
         end
 
+      "=" when cur == ":" ->
+        tokenize(next, tokens ++ [":="], "")
+
       "=" ->
-        if cur == ":" do
-          tokenize(next, tokens ++ [":="], "")
-        else
-          tokenize(next, tokens ++ [cur, "="], "")
-        end
+        tokenize(next, tokens ++ [cur, "="], "")
 
       ":" ->
         tokenize(next, tokens ++ [cur, ":"], "")
@@ -107,7 +106,7 @@ defmodule Stench.Lexer do
 
   @spec tokenize(binary()) :: any()
   def tokenize(line) do
-      tokenize(line, [], "")
+    tokenize(line, [], "")
   end
 
   @spec first_quote(binary()) :: :error | {binary(), pos_integer()}

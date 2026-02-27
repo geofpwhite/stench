@@ -1,0 +1,8 @@
+x = 123;
+xRef = ref x;
+deref xRef = 50;
+dump ("x is " + x);
+f = 10 + (deref xRef);
+dump ("f is " + f);
+
+ary = [1,2,3]
