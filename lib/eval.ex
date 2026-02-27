@@ -39,6 +39,29 @@ defmodule Stench.Eval do
     state
   end
 
+  def eval(%Ref{variable: %TreeNode{value: v}}, state) do
+    %{state | cur_return: %Var{type: :ref, value: v}}
+  end
+  def eval(%Deref{reference: %TreeNode{value: v}}, state) do
+    ref = Map.get(state.vars, v, %Var{})
+
+    if ref.type == :ref do
+      %{state | cur_return: Map.get(state.vars, ref.value, %Var{})}
+    else
+      :error
+    end
+  end
+
+  def eval([%Deref{reference: %TreeNode{value: v}}], state) do
+    ref = Map.get(state.vars, v, %Var{})
+
+    if ref.type == :ref do
+      %{state | cur_return: Map.get(state.vars, ref.value, %Var{})}
+    else
+      :error
+    end
+  end
+
   @spec eval([any()], any()) :: any()
   def eval([cur | tail], state) do
     s = eval(cur, state)
@@ -390,6 +413,7 @@ defmodule Stench.Eval do
     %Var{type: :bucket, value: vars}
   end
 
+
   @spec operator(any(), any(), any()) :: :error | Var.t()
   def operator(string1, string2, "+") when string1.type == :string and string2.type == :string do
     %Var{
@@ -598,6 +622,17 @@ defmodule Stench.Eval do
           cur_return: rhs
       }
     end
+  end
+
+  def assign(lhs, %Ref{variable: v}, state) do
+    s = %{state | vars: Map.put(state.vars, lhs, %Var{type: :ref, value: v.value})}
+
+    s
+  end
+
+  def assign(%Deref{reference: ref}, rhs, state) do
+    v = Map.get(state.vars, ref.value, %Var{})
+    assign(v.value, rhs, state)
   end
 
   @spec assign(any(), any(), any()) :: %{

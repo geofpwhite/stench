@@ -80,7 +80,7 @@ defmodule Stench.CLI do
     case File.read(file_name) do
       {:ok, content} ->
         s = eval(to_string(content), %State{})
-        IO.puts(dump_for_repl(s.cur_return))
+        # IO.puts(dump_for_repl(s.cur_return))
         s
 
       e ->
