@@ -96,18 +96,21 @@ defmodule StenchTest.ControlFlow do
     assert state.cur_return.type == :num and state.vars["a"].value == 9
     state = Stench.CLI.eval("a = 4; pileup i := [1,2,3] { a = i;}")
     assert state.cur_return.type == :num and state.vars["a"].value == 3
-    state = Stench.CLI.eval("""
-    a = 4;
-    pileup i := [1,2]{
-      pileup i := [1,2,3] {
-        a = i;
-        if a is 2 {
-          break;
+
+    state =
+      Stench.CLI.eval("""
+      a = 4;
+      pileup i := [1,2]{
+        pileup i := [1,2,3] {
+          a = i;
+          if a is 2 {
+            break;
+          }
         }
+        break;
       }
-      break;
-    }
-    """)
+      """)
+
     assert state.vars["a"].type == :num and state.vars["a"].value == 2
   end
 end
@@ -222,6 +225,7 @@ defmodule StenchTest.OdorsAndSniffs do
       """)
 
     assert x == :eval_error
+
     x =
       Stench.CLI.eval("""
       odor my_odor(a: num, b: num) num {
@@ -333,6 +337,7 @@ end
 
 defmodule StenchTest.IsChecks do
   use ExUnit.Case
+
   test "\"is\" checks" do
     assert not MultiAccessor.is_multi_accessor(0)
     assert MultiAccessor.is_multi_accessor(%MultiAccessor{})
@@ -341,7 +346,6 @@ defmodule StenchTest.IsChecks do
   end
 end
 
-
 # for more coverage
 
 defmodule StenchTest.SpecialKeywords do
@@ -349,23 +353,26 @@ defmodule StenchTest.SpecialKeywords do
 
   test "use of special keywords" do
     state = Stench.CLI.eval(" x = [1,2,3]; sizex = size x; wipe x; ")
-    IO.inspect(state,label: "Final State")
-    assert (Map.get(state.vars,"x",%Var{}).type == :nil) and state.vars["sizex"].type == :num and state.vars["sizex"].value == 3
+    IO.inspect(state, label: "Final State")
 
-    state = Stench.CLI.eval("""
-    x = [1,2,3];
-    typex = typeof x;
-    y = 2 ;
-    typey = typeof y;
-    z = "hello";
-    typez = typeof z;
-    """)
+    assert Map.get(state.vars, "x", %Var{}).type == nil and state.vars["sizex"].type == :num and
+             state.vars["sizex"].value == 3
+
+    state =
+      Stench.CLI.eval("""
+      x = [1,2,3];
+      typex = typeof x;
+      y = 2 ;
+      typey = typeof y;
+      z = "hello";
+      typez = typeof z;
+      """)
 
     assert state.vars["typex"].type == :type and state.vars["typex"].value == :bucket
     assert state.vars["typey"].type == :type and state.vars["typey"].value == :num
     assert state.vars["typez"].type == :type and state.vars["typez"].value == :string
     state = Stench.CLI.eval(" x = 10; typeof x;")
-    assert state.cur_return.type== :type and state.cur_return.value== :num
+    assert state.cur_return.type == :type and state.cur_return.value == :num
   end
 end
 
@@ -386,6 +393,7 @@ defmodule StenchTest.DumpTests do
     assert state.cur_return.type == nil
   end
 end
+
 defmodule StenchTest.IfElseTests do
   use ExUnit.Case
 
@@ -402,18 +410,24 @@ defmodule StenchTest.BucketOperations do
   use ExUnit.Case
 
   test "operators with buckets" do
-
     state = Stench.CLI.eval("arr = [1, 2, 3]; x = arr + [[2,3]];")
     assert state.vars["x"].type == :bucket and Enum.count(state.vars["x"].value) == 4
-    state = Stench.CLI.eval("x[3][1]=4;dump x;",state)
-    check_var = Enum.at(state.vars["x"].value,3).value |> Enum.at(1)
+    state = Stench.CLI.eval("x[3][1]=4;dump x;", state)
+    check_var = Enum.at(state.vars["x"].value, 3).value |> Enum.at(1)
     IO.inspect(state)
-    assert check_var.type == :num and check_var.value== 4
+    assert check_var.type == :num and check_var.value == 4
     state = Stench.CLI.eval("arr = [1, 2, 3]; x = arr + 2;")
     assert state.vars["x"].type == :bucket and Enum.count(state.vars["x"].value) == 4
     state = Stench.CLI.eval("arr = [1, 2, 3]; x = arr + [2];")
     assert state.vars["x"].type == :bucket and Enum.count(state.vars["x"].value) == 4
     state = Stench.CLI.eval("arr = [1, 2, 3]; x = 2+ arr + [2];")
     assert state.vars["x"].type == :bucket and Enum.count(state.vars["x"].value) == 5
+  end
+end
+
+defmodule StenchTest.ReferenceTypes do
+  use ExUnit.Case
+
+  test "reference types" do
   end
 end

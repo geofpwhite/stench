@@ -1,11 +1,13 @@
 list = [5,2,8,34,7,3];
 odor insertionSort(list: bucket) bucket {
+    k = 0;
     pileup i := list { 
-        pileup j=_index_;j>0 and (list[j]<list[j-1]);j=j-1 {
+        pileup j=k;j>0 and (list[j]<list[j-1]);j=j-1 {
             hold = list[j];
             list[j]=list[j-1];
             list[j-1]=hold;
         }
+        k = k + 1;
     }
     list
 }

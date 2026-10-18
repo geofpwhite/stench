@@ -8,7 +8,7 @@ defmodule Stench.Parser do
   def parse([token | tail]) do
     t = %TreeNode{value: token}
 
-    if t.value not in ["(", "["] do
+    if t.value not in ["(", "[", "deref"] do
       parse(t, tail)
     else
       parse(%TreeNode{}, [token | tail])
@@ -128,6 +128,61 @@ defmodule Stench.Parser do
 
       _ ->
         case token do
+          "ref" ->
+            {node, new_tail} = parse_reference(tail)
+
+            if root do
+              parse(%{cur_node | right: node}, new_tail, root, statements)
+            else
+              case parse(new_tail) do
+                [x] ->
+                  statements ++ [node] ++ x
+
+                ary when is_list(ary) ->
+                  statements ++ [node] ++ ary
+
+                other ->
+                  statements ++ [node] ++ [other]
+              end
+            end
+
+          "deref" ->
+            {node, tokens} = parse_dereference(tail)
+
+            if root do
+              p = sanitize_inner(parse(%{cur_node | right: node}, tokens, root, statements))
+
+              p
+            else
+              if Enum.count(tokens) > 0 do
+                [next | tail] = tokens
+
+                case next do
+                  "=" ->
+                    p =
+                      sanitize_inner(
+                        parse(%TreeNode{value: node}, [next | tail], root, statements)
+                      )
+
+                    p
+
+                  _ ->
+                    case parse(tail) do
+                      [x] ->
+                        statements ++ [node] ++ x
+
+                      ary when is_list(ary) ->
+                        statements ++ [node] ++ ary
+
+                      other ->
+                        statements ++ [node] ++ other
+                    end
+                end
+              else
+                node
+              end
+            end
+
           token when token in @infix_operators ->
             # if we are assigning
             if root or cur_node.value in @prefix_operators do
@@ -145,12 +200,11 @@ defmodule Stench.Parser do
               %{cur_node | right: parse(%TreeNode{value: token}, tail, true)}
             else
               new = %TreeNode{value: token}
-              parse(new, tail, true,  statements)
+              parse(new, tail, true, statements)
             end
 
           "[" ->
             cond do
-
               Accessor.is_accessor(cur_node.value) or
                   MultiAccessor.is_multi_accessor(cur_node.value) ->
                 {accessor, tail} = parse_multi_index(cur_node.value, tail)
@@ -305,10 +359,12 @@ defmodule Stench.Parser do
     new_tail = Enum.slice(tail, Enum.count(within) + 1, Enum.count(tail) - Enum.count(within) - 1)
 
     param_values =
-      Enum.map(Enum.reject(Enum.chunk_by(inner(tail), fn t -> t == "," end), fn t -> t == [","] end),
-      fn param_tokens ->
-        parse(param_tokens)
-      end)
+      Enum.map(
+        Enum.reject(Enum.chunk_by(inner(tail), fn t -> t == "," end), fn t -> t == [","] end),
+        fn param_tokens ->
+          parse(param_tokens)
+        end
+      )
 
     {%Sniff{
        odor: odor,
@@ -430,6 +486,55 @@ defmodule Stench.Parser do
     else
       {%Conditional{condition: check, do: exec}, new_tail}
     end
+  end
+
+  def parse_dereference([token]) do
+    {%Deref{reference: sanitize_inner(parse([token]))}, []}
+  end
+
+  def parse_dereference([token | tail]) do
+    {new_tail, tokens_dereferencing, _} = until_first([token | tail], ["=", ";"])
+    p = sanitize_inner(parse(tokens_dereferencing))
+    {%Deref{reference: p}, new_tail}
+  end
+
+  @spec parse_reference(nonempty_maybe_improper_list()) :: {Ref.t(), list()}
+  def parse_reference([token | tail]) do
+    {new_tail, tokens_referencing} = until([token | tail], ";")
+    p = sanitize_inner(parse(tokens_referencing))
+    {%Ref{variable: p}, new_tail}
+  end
+
+  def until_first(ary, chars) do
+    until_first(ary, [], chars)
+  end
+
+  def until_first([], return_tokens, _) do
+    {[], return_tokens}
+  end
+
+  def until_first([token | tail], return_tokens, chars) do
+    if token in chars do
+      {[token | tail], return_tokens, token}
+    else
+      until_first(tail, return_tokens ++ [token], chars)
+    end
+  end
+
+  def until(ary, char) do
+    until(ary, [], char)
+  end
+
+  def until([], return_tokens, _) do
+    {[], return_tokens}
+  end
+
+  def until([token | tail], return_tokens, char) when token == char do
+    {tail, return_tokens}
+  end
+
+  def until([token | tail], return_tokens, char) do
+    until(tail, return_tokens ++ [token], char)
   end
 
   # parse_odor/1
